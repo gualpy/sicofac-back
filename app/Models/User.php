@@ -3,14 +3,17 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\CompanyMembershipStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -44,5 +47,32 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function companies(): BelongsToMany
+    {
+        return $this->belongsToMany(Company::class)
+            ->withPivot(['role', 'status'])
+            ->withTimestamps();
+    }
+
+    public function belongsToCompany(int $companyId): bool
+    {
+        return $this->companies()
+            ->whereKey($companyId)
+            ->wherePivot('status', CompanyMembershipStatus::Active->value)
+            ->exists();
+    }
+
+    /**
+     * @param  array<int, string>  $roles
+     */
+    public function hasCompanyRole(int $companyId, array $roles): bool
+    {
+        return $this->companies()
+            ->whereKey($companyId)
+            ->wherePivot('status', CompanyMembershipStatus::Active->value)
+            ->wherePivotIn('role', $roles)
+            ->exists();
     }
 }
