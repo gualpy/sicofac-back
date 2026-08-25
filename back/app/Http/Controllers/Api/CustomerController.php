@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\Customer;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
@@ -18,11 +19,18 @@ class CustomerController extends Controller
         $this->authorizeResource(Customer::class, 'customer');
     }
 
-    public function index(Company $company): JsonResponse
+    public function index(Request $request, Company $company): JsonResponse
     {
-        return response()->json(
-            $company->customers()->latest()->paginate(15)
-        );
+        $query = $company->customers()->latest();
+
+        if ($search = trim((string) $request->query('search', ''))) {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('name', 'like', "%{$search}%")
+                    ->orWhere('identification_number', 'like', "%{$search}%");
+            });
+        }
+
+        return response()->json($query->paginate((int) $request->query('per_page', 15)));
     }
 
     public function store(StoreCustomerRequest $request, Company $company): JsonResponse

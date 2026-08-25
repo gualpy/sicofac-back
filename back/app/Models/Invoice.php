@@ -20,13 +20,27 @@ class Invoice extends Model
         'document_code',
         'establishment_code',
         'emission_point',
+        'guide_number',
+        'is_negotiable',
         'sequential',
         'issue_date',
         'status',
         'currency',
         'subtotal',
         'discount',
+        'subtotal_15',
+        'subtotal_5',
+        'subtotal_special',
+        'subtotal_zero',
+        'subtotal_not_subject',
+        'subtotal_exempt',
         'tax',
+        'tax_15',
+        'tax_5',
+        'tax_special',
+        'ice_total',
+        'has_tip',
+        'tip_amount',
         'total',
         'access_key',
         'sri_authorization_number',
@@ -43,9 +57,22 @@ class Invoice extends Model
         return [
             'issue_date' => 'date',
             'status' => InvoiceStatus::class,
+            'is_negotiable' => 'bool',
             'subtotal' => 'decimal:2',
             'discount' => 'decimal:2',
+            'subtotal_15' => 'decimal:2',
+            'subtotal_5' => 'decimal:2',
+            'subtotal_special' => 'decimal:2',
+            'subtotal_zero' => 'decimal:2',
+            'subtotal_not_subject' => 'decimal:2',
+            'subtotal_exempt' => 'decimal:2',
             'tax' => 'decimal:2',
+            'tax_15' => 'decimal:2',
+            'tax_5' => 'decimal:2',
+            'tax_special' => 'decimal:2',
+            'ice_total' => 'decimal:2',
+            'has_tip' => 'bool',
+            'tip_amount' => 'decimal:2',
             'total' => 'decimal:2',
             'sri_response_payload' => 'array',
             'xml_generated_at' => 'datetime',
@@ -79,5 +106,15 @@ class Invoice extends Model
     public function events(): HasMany
     {
         return $this->hasMany(InvoiceEvent::class);
+    }
+
+    public function paymentMethods(): HasMany
+    {
+        return $this->hasMany(InvoicePaymentMethod::class);
+    }
+
+    public function additionalFields(): HasMany
+    {
+        return $this->hasMany(InvoiceAdditionalField::class);
     }
 }

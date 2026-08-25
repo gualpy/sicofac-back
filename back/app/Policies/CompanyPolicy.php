@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\CompanyMembershipRole;
 use App\Models\Company;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 class CompanyPolicy
 {
@@ -18,9 +19,9 @@ class CompanyPolicy
         return $this->belongsToCompany($user, $company->id);
     }
 
-    public function create(?User $user): bool
+    public function create(?User $user): Response
     {
-        return $user !== null;
+        return Response::deny('La creacion de empresas esta deshabilitada. Contacta al administrador.');
     }
 
     public function update(?User $user, Company $company): bool

@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\Billing\InvoiceItemData;
-use App\Enums\InvoiceStatus;
+use App\Enums\TaxCode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Invoice\StoreInvoiceRequest;
 use App\Http\Requests\Invoice\UpdateInvoiceRequest;
 use App\Models\Company;
 use App\Models\Invoice;
+use App\Models\InvoiceAdditionalField;
+use App\Models\InvoicePaymentMethod;
 use App\Services\Audit\AuditLogger;
 use App\Services\Billing\InvoiceDraftService;
 use App\Services\Billing\InvoiceEmissionService;
@@ -48,8 +50,13 @@ class InvoiceController extends Controller
             customerId: $validated['customer_id'] ?? null,
             items: $this->toItemDtoArray($validated['items']),
             documentCode: $validated['document_code'] ?? '01',
-            establishmentCode: $company->establishment_code,
-            emissionPoint: $company->emission_point,
+            establishmentCode: $validated['establishment_code'] ?? $company->establishment_code,
+            emissionPoint: $validated['emission_point'] ?? $company->emission_point,
+            guideNumber: $validated['guide_number'] ?? null,
+            isNegotiable: (bool) ($validated['is_negotiable'] ?? false),
+            hasTip: (bool) ($validated['has_tip'] ?? false),
+            paymentMethods: $validated['payment_methods'] ?? [],
+            additionalFields: $validated['additional_fields'] ?? [],
         );
         $this->auditLogger->log('invoice.created', $invoice, null, $invoice->toArray());
 
@@ -58,7 +65,7 @@ class InvoiceController extends Controller
 
     public function show(Company $company, Invoice $invoice): JsonResponse
     {
-        return response()->json($invoice->load(['customer', 'items', 'document', 'events']));
+        return response()->json($invoice->load(['customer', 'items', 'document', 'events', 'paymentMethods', 'additionalFields']));
     }
 
     public function update(
@@ -73,8 +80,17 @@ class InvoiceController extends Controller
         DB::transaction(function () use ($validated, $invoice, $totalsCalculator) {
             if (array_key_exists('customer_id', $validated)) {
                 $invoice->customer_id = $validated['customer_id'];
-                $invoice->save();
             }
+            if (array_key_exists('guide_number', $validated)) {
+                $invoice->guide_number = $validated['guide_number'];
+            }
+            if (array_key_exists('is_negotiable', $validated)) {
+                $invoice->is_negotiable = $validated['is_negotiable'];
+            }
+            if (array_key_exists('has_tip', $validated)) {
+                $invoice->has_tip = $validated['has_tip'];
+            }
+            $invoice->save();
 
             if (array_key_exists('items', $validated)) {
                 $invoice->items()->delete();
@@ -88,9 +104,38 @@ class InvoiceController extends Controller
                         'unit_price' => $item->unitPrice,
                         'discount' => $item->discount,
                         'tax_rate' => $item->taxRate,
+                        'tax_code' => $item->taxCode,
                         'tax_amount' => $item->taxAmount(),
+                        'ice_rate' => $item->iceRate,
+                        'ice_amount' => $item->iceAmount(),
                         'subtotal' => $item->subtotal(),
                         'total' => $item->total(),
+                    ]);
+                }
+            }
+
+            if (array_key_exists('payment_methods', $validated)) {
+                $invoice->paymentMethods()->delete();
+
+                foreach ($validated['payment_methods'] as $paymentMethod) {
+                    InvoicePaymentMethod::query()->create([
+                        'invoice_id' => $invoice->id,
+                        'method' => $paymentMethod['method'],
+                        'value' => $paymentMethod['value'],
+                        'term_value' => $paymentMethod['term_value'] ?? null,
+                        'term_unit' => $paymentMethod['term_unit'] ?? null,
+                    ]);
+                }
+            }
+
+            if (array_key_exists('additional_fields', $validated)) {
+                $invoice->additionalFields()->delete();
+
+                foreach ($validated['additional_fields'] as $additionalField) {
+                    InvoiceAdditionalField::query()->create([
+                        'invoice_id' => $invoice->id,
+                        'name' => $additionalField['name'],
+                        'description' => $additionalField['description'],
                     ]);
                 }
             }
@@ -99,12 +144,23 @@ class InvoiceController extends Controller
             $invoice->update([
                 'subtotal' => $totals->subtotal,
                 'discount' => $totals->discount,
+                'subtotal_15' => $totals->subtotal15,
+                'subtotal_5' => $totals->subtotal5,
+                'subtotal_special' => $totals->subtotalSpecial,
+                'subtotal_zero' => $totals->subtotalZero,
+                'subtotal_not_subject' => $totals->subtotalNotSubject,
+                'subtotal_exempt' => $totals->subtotalExempt,
                 'tax' => $totals->tax,
+                'tax_15' => $totals->tax15,
+                'tax_5' => $totals->tax5,
+                'tax_special' => $totals->taxSpecial,
+                'ice_total' => $totals->iceTotal,
+                'tip_amount' => $totals->tipAmount,
                 'total' => $totals->total,
             ]);
         });
 
-        $after = $invoice->fresh(['customer', 'items']);
+        $after = $invoice->fresh(['customer', 'items', 'paymentMethods', 'additionalFields']);
         $this->auditLogger->log('invoice.updated', $invoice, $before, $after->toArray());
 
         return response()->json($after);
@@ -149,15 +205,24 @@ class InvoiceController extends Controller
     private function toItemDtoArray(array $items): array
     {
         return array_map(
-            fn (array $item) => new InvoiceItemData(
-                code: (string) $item['code'],
-                name: (string) $item['name'],
-                quantity: (float) $item['quantity'],
-                unitPrice: (float) $item['unit_price'],
-                productId: isset($item['product_id']) ? (int) $item['product_id'] : null,
-                discount: (float) ($item['discount'] ?? 0),
-                taxRate: (float) ($item['tax_rate'] ?? 0),
-            ),
+            function (array $item) {
+                $taxRate = (float) ($item['tax_rate'] ?? 0);
+                $taxCode = isset($item['tax_code'])
+                    ? TaxCode::from((string) $item['tax_code'])
+                    : TaxCode::fromRate($taxRate);
+
+                return new InvoiceItemData(
+                    code: (string) $item['code'],
+                    name: (string) $item['name'],
+                    quantity: (float) $item['quantity'],
+                    unitPrice: (float) $item['unit_price'],
+                    productId: isset($item['product_id']) ? (int) $item['product_id'] : null,
+                    discount: (float) ($item['discount'] ?? 0),
+                    taxRate: $taxRate,
+                    taxCode: $taxCode,
+                    iceRate: (float) ($item['ice_rate'] ?? 0),
+                );
+            },
             $items
         );
     }

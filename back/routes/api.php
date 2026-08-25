@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Api\{AuthController, CompanyController, CustomerController, InvoiceController, ProductController};
+use App\Http\Controllers\Api\{AuthController, CompanyController, CompanyEstablishmentController, CustomerController, InvoiceController, ProductController};
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:login')->name('auth.register');
@@ -32,6 +32,8 @@ Route::middleware('auth:sanctum')->scopeBindings()->group(function () {
     Route::patch('companies/{company}/members/{user}', [CompanyController::class, 'updateMember'])
         ->middleware('throttle:critical')
         ->name('companies.members.update');
+    Route::get('companies/{company}/establishments', [CompanyEstablishmentController::class, 'index'])
+        ->name('companies.establishments.index');
     Route::apiResource('companies.customers', CustomerController::class);
     Route::post('companies/{company}/products/import', [ProductController::class, 'import'])
         ->middleware('throttle:critical')

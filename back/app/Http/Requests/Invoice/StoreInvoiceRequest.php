@@ -3,6 +3,9 @@
 namespace App\Http\Requests\Invoice;
 
 use App\Enums\CompanyMembershipRole;
+use App\Enums\PaymentMethod;
+use App\Enums\PaymentTermUnit;
+use App\Enums\TaxCode;
 use App\Models\Company;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -40,6 +43,15 @@ class StoreInvoiceRequest extends FormRequest
                 Rule::exists('customers', 'id')->where(fn ($query) => $query->where('company_id', $company->id)),
             ],
             'document_code' => ['sometimes', Rule::in(['01', '04', '05', '06', '07'])],
+            'establishment_code' => [
+                'sometimes', 'string', 'size:3',
+                Rule::exists('company_establishments', 'code')->where(fn ($query) => $query->where('company_id', $company->id)),
+            ],
+            'emission_point' => ['sometimes', 'string', 'size:3'],
+            'guide_number' => ['nullable', 'string', 'max:17'],
+            'is_negotiable' => ['sometimes', 'boolean'],
+            'has_tip' => ['sometimes', 'boolean'],
+
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => [
                 'nullable',
@@ -51,6 +63,18 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.discount' => ['nullable', 'numeric', 'min:0'],
             'items.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.tax_code' => ['nullable', Rule::in(array_column(TaxCode::cases(), 'value'))],
+            'items.*.ice_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+
+            'payment_methods' => ['sometimes', 'array'],
+            'payment_methods.*.method' => ['required_with:payment_methods', Rule::in(array_column(PaymentMethod::cases(), 'value'))],
+            'payment_methods.*.value' => ['required_with:payment_methods', 'numeric', 'min:0'],
+            'payment_methods.*.term_value' => ['nullable', 'integer', 'min:1'],
+            'payment_methods.*.term_unit' => ['nullable', Rule::in(array_column(PaymentTermUnit::cases(), 'value'))],
+
+            'additional_fields' => ['sometimes', 'array'],
+            'additional_fields.*.name' => ['required_with:additional_fields', 'string', 'max:300'],
+            'additional_fields.*.description' => ['required_with:additional_fields', 'string', 'max:300'],
         ];
     }
 }

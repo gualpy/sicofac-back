@@ -16,10 +16,14 @@ class AuthApiTest extends TestCase
             'email' => 'auth@example.com',
             'password' => 'Password123!',
             'device_name' => 'phpunit',
+            'company_name' => 'Auth User Company',
+            'company_ruc' => '0999999999001',
+            'company_environment' => 'test',
         ])->assertCreated();
 
         $token = $register->json('token');
         $this->assertNotEmpty($token);
+        $this->assertNotEmpty($register->json('company.id'));
 
         $this->withHeader('Authorization', "Bearer {$token}")
             ->getJson('/api/auth/me')

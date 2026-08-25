@@ -26,6 +26,9 @@ class UpdateIssuerConfigRequest extends FormRequest
             'emission_point' => ['sometimes', 'required', 'string', 'size:3'],
             'trade_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'address' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'email' => ['sometimes', 'nullable', 'email', 'max:255'],
         ];
     }
 }

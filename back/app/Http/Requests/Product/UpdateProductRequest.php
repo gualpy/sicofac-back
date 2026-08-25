@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Product;
 
+use App\Enums\TaxCode;
 use App\Models\Company;
 use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
@@ -40,6 +41,8 @@ class UpdateProductRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'unit_price' => ['sometimes', 'required', 'numeric', 'min:0'],
             'tax_rate' => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
+            'tax_code' => ['sometimes', 'nullable', Rule::in(array_column(TaxCode::cases(), 'value'))],
+            'ice_rate' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

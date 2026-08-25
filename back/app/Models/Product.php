@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TaxCode;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,6 +19,8 @@ class Product extends Model
         'name',
         'unit_price',
         'tax_rate',
+        'tax_code',
+        'ice_rate',
         'is_active',
     ];
 
@@ -26,6 +29,8 @@ class Product extends Model
         return [
             'unit_price' => 'decimal:2',
             'tax_rate' => 'decimal:2',
+            'tax_code' => TaxCode::class,
+            'ice_rate' => 'decimal:2',
             'is_active' => 'bool',
         ];
     }

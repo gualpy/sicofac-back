@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Product;
 
 use App\Enums\CompanyMembershipRole;
+use App\Enums\TaxCode;
 use App\Models\Company;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -44,6 +45,8 @@ class StoreProductRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'unit_price' => ['required', 'numeric', 'min:0'],
             'tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'tax_code' => ['nullable', Rule::in(array_column(TaxCode::cases(), 'value'))],
+            'ice_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

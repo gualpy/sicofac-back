@@ -13,6 +13,9 @@ class Company extends Model
     protected $fillable = [
         'name',
         'trade_name',
+        'address',
+        'phone',
+        'email',
         'ruc',
         'establishment_code',
         'emission_point',
@@ -63,5 +66,10 @@ class Company extends Model
     public function imports(): HasMany
     {
         return $this->hasMany(ProductImport::class);
+    }
+
+    public function establishments(): HasMany
+    {
+        return $this->hasMany(CompanyEstablishment::class);
     }
 }

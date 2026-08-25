@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Company;
 
-use App\Models\Company;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,7 +9,10 @@ class StoreCompanyRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->can('create', Company::class);
+        // Actual authorization happens in the controller via
+        // $this->authorize('create', Company::class) so the policy's deny
+        // message reaches the client.
+        return $this->user() !== null;
     }
 
     /**

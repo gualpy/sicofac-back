@@ -44,6 +44,7 @@ class StoreCustomerRequest extends FormRequest
                     ->where(fn ($query) => $query->where('company_id', $company->id)),
             ],
             'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:255'],
         ];
     }

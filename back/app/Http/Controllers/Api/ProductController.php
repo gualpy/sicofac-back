@@ -10,6 +10,7 @@ use App\Services\Products\ProductExportService;
 use App\Services\Products\ProductImportService;
 use App\Services\Products\ProductImportQueryService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductController extends Controller
@@ -21,11 +22,18 @@ class ProductController extends Controller
         $this->authorizeResource(Product::class, 'product');
     }
 
-    public function index(Company $company): JsonResponse
+    public function index(Request $request, Company $company): JsonResponse
     {
-        return response()->json(
-            $company->products()->latest()->paginate(15)
-        );
+        $query = $company->products()->latest();
+
+        if ($search = trim((string) $request->query('search', ''))) {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+
+        return response()->json($query->paginate((int) $request->query('per_page', 15)));
     }
 
     public function store(StoreProductRequest $request, Company $company): JsonResponse

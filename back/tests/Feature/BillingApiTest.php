@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CompanyMembershipRole;
+use App\Enums\CompanyMembershipStatus;
 use App\Enums\InvoiceStatus;
+use App\Models\Company;
 use App\Models\InvoiceDocument;
 use App\Models\Invoice;
 use App\Models\User;
@@ -24,16 +27,23 @@ class BillingApiTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $companyResponse = $this->postJson('/api/companies', [
+        // Company creation is admin-provisioned only (self-service creation
+        // is disabled), so tests attach the user directly instead of going
+        // through POST /api/companies.
+        $company = Company::query()->create([
             'name' => 'Acme SA',
             'trade_name' => 'Acme',
             'ruc' => '0999999999001',
             'environment' => 'test',
             'sri_signing_enabled' => false,
             'sri_submission_enabled' => false,
-        ])->assertCreated();
+        ]);
+        $user->companies()->attach($company->id, [
+            'role' => CompanyMembershipRole::Owner->value,
+            'status' => CompanyMembershipStatus::Active->value,
+        ]);
 
-        $companyId = $companyResponse->json('id');
+        $companyId = $company->id;
 
         $customerResponse = $this->postJson("/api/companies/{$companyId}/customers", [
             'name' => 'Cliente Uno',
