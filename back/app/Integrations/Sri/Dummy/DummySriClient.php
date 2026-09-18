@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 class DummySriClient implements SriClientInterface
 {
-    public function sendToReception(string $signedXml): SriReceptionResponseDTO
+    public function sendToReception(string $signedXml, string $environment): SriReceptionResponseDTO
     {
         return new SriReceptionResponseDTO(
             success: true,
@@ -22,7 +22,7 @@ class DummySriClient implements SriClientInterface
         );
     }
 
-    public function checkAuthorization(string $accessKey): SriAuthorizationResponseDTO
+    public function checkAuthorization(string $accessKey, string $environment): SriAuthorizationResponseDTO
     {
         return new SriAuthorizationResponseDTO(
             authorized: true,

@@ -21,7 +21,11 @@ class UpdateIssuerConfigRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'ruc' => ['sometimes', 'required', 'string', 'size:13'],
+            // The SRI's own XSD requires the issuer RUC to be the base
+            // taxpayer identity, always suffixed "001" (Anexo 14 /
+            // numeroRuc), regardless of which establishment/punto de
+            // emision actually issues the document.
+            'ruc' => ['sometimes', 'required', 'string', 'regex:/^\d{10}001$/'],
             'establishment_code' => ['sometimes', 'required', 'string', 'size:3'],
             'emission_point' => ['sometimes', 'required', 'string', 'size:3'],
             'trade_name' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -29,6 +33,10 @@ class UpdateIssuerConfigRequest extends FormRequest
             'address' => ['sometimes', 'nullable', 'string', 'max:255'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'is_rimpe' => ['sometimes', 'boolean'],
+            'is_special_taxpayer' => ['sometimes', 'boolean'],
+            'is_popular_business' => ['sometimes', 'boolean'],
+            'requires_accounting' => ['sometimes', 'boolean'],
         ];
     }
 }

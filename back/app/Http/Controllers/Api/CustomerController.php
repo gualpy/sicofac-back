@@ -24,9 +24,17 @@ class CustomerController extends Controller
         $query = $company->customers()->latest();
 
         if ($search = trim((string) $request->query('search', ''))) {
-            $query->where(function ($inner) use ($search) {
+            // The customers list displays "{tipo} {numero}" (e.g. "05 1712345678");
+            // strip a pasted type prefix so that exact copy/paste still matches.
+            $identificationSearch = preg_replace('/^\d{2}\s+/', '', $search);
+
+            $query->where(function ($inner) use ($search, $identificationSearch) {
                 $inner->where('name', 'like', "%{$search}%")
                     ->orWhere('identification_number', 'like', "%{$search}%");
+
+                if ($identificationSearch !== $search) {
+                    $inner->orWhere('identification_number', 'like', "%{$identificationSearch}%");
+                }
             });
         }
 

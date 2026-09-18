@@ -26,7 +26,7 @@ class SendReceptionJob implements ShouldQueue
 
     public function handle(SriClientInterface $sriClient, InvoiceStateService $stateService): void
     {
-        $invoice = Invoice::query()->findOrFail($this->invoiceId);
+        $invoice = Invoice::query()->with('company')->findOrFail($this->invoiceId);
 
         if ($invoice->status !== InvoiceStatus::Signed) {
             return;
@@ -35,7 +35,7 @@ class SendReceptionJob implements ShouldQueue
         $document = InvoiceDocument::query()->where('invoice_id', $invoice->id)->firstOrFail();
         $signedXml = (string) Storage::disk('local')->get($document->xml_signed_path ?: $document->xml_generated_path);
 
-        $response = $sriClient->sendToReception($signedXml);
+        $response = $sriClient->sendToReception($signedXml, $invoice->company->environment);
 
         if (! $response->success) {
             $stateService->setStatus($invoice, InvoiceStatus::Rejected, [

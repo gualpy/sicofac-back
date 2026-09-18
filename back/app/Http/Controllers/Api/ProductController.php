@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\CompanyMembershipRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\{ExportProductsRequest, ImportProductsRequest, ListProductImportsRequest, ShowProductImportRequest, StoreProductRequest, UpdateProductRequest};
 use App\Models\{Company, Product, ProductImport};
@@ -31,6 +32,14 @@ class ProductController extends Controller
                 $inner->where('name', 'like', "%{$search}%")
                     ->orWhere('code', 'like', "%{$search}%");
             });
+        }
+
+        if ($code = trim((string) $request->query('code', ''))) {
+            $query->where('code', 'like', "%{$code}%");
+        }
+
+        if ($name = trim((string) $request->query('name', ''))) {
+            $query->where('name', 'like', "%{$name}%");
         }
 
         return response()->json($query->paginate((int) $request->query('per_page', 15)));
@@ -66,6 +75,41 @@ class ProductController extends Controller
         $this->auditLogger->log('product.deleted', $product, $before, null);
 
         return response()->json(status: 204);
+    }
+
+    public function destroyAll(Request $request, Company $company): JsonResponse
+    {
+        abort_unless(
+            $request->user()->hasCompanyRole($company->id, [
+                CompanyMembershipRole::Owner->value,
+                CompanyMembershipRole::Admin->value,
+            ]),
+            403,
+        );
+
+        $products = $company->products()->get();
+        $deleted = 0;
+        $skipped = 0;
+
+        foreach ($products as $product) {
+            if ($product->invoiceItems()->exists()) {
+                $skipped++;
+                continue;
+            }
+
+            // Hard delete here: "eliminar todos" is meant as a full catalog
+            // reset, and a soft-deleted row would keep occupying the
+            // (company_id, code) unique slot forever, blocking reuse.
+            $product->forceDelete();
+            $deleted++;
+        }
+
+        $this->auditLogger->log('product.deleted_all', null, null, [
+            'deleted' => $deleted,
+            'skipped' => $skipped,
+        ], companyId: $company->id);
+
+        return response()->json(['deleted' => $deleted, 'skipped' => $skipped]);
     }
 
     public function import(

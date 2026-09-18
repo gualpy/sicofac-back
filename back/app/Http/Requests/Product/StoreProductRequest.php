@@ -42,6 +42,7 @@ class StoreProductRequest extends FormRequest
                 Rule::unique('products', 'code')
                     ->where(fn ($query) => $query->where('company_id', $company->id)),
             ],
+            'auxiliary_code' => ['nullable', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:255'],
             'unit_price' => ['required', 'numeric', 'min:0'],
             'tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],

@@ -23,7 +23,7 @@ class StoreCompanyRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'trade_name' => ['nullable', 'string', 'max:255'],
-            'ruc' => ['required', 'string', 'size:13', 'unique:companies,ruc'],
+            'ruc' => ['required', 'string', 'regex:/^\d{10}001$/', 'unique:companies,ruc'],
             'environment' => ['required', Rule::in(['test', 'production'])],
             'sri_signing_enabled' => ['sometimes', 'boolean'],
             'sri_submission_enabled' => ['sometimes', 'boolean'],

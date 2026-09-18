@@ -30,7 +30,7 @@ class UpdateCompanyRequest extends FormRequest
             'address' => ['sometimes', 'nullable', 'string', 'max:255'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
-            'ruc' => ['sometimes', 'required', 'string', 'size:13', Rule::unique('companies', 'ruc')->ignore($company->id)],
+            'ruc' => ['sometimes', 'required', 'string', 'regex:/^\d{10}001$/', Rule::unique('companies', 'ruc')->ignore($company->id)],
             'environment' => ['sometimes', 'required', Rule::in(['test', 'production'])],
             'sri_signing_enabled' => ['sometimes', 'boolean'],
             'sri_submission_enabled' => ['sometimes', 'boolean'],

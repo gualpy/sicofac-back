@@ -9,6 +9,8 @@ use App\Integrations\Sri\Dummy\DummySriClient;
 use App\Integrations\Sri\Dummy\DummyXadesSigner;
 use App\Integrations\Sri\Dummy\DummyXmlBuilder;
 use App\Integrations\Sri\Real\RealSriClient;
+use App\Integrations\Sri\Real\RealXadesSigner;
+use App\Integrations\Sri\Real\RealXmlBuilder;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -30,8 +32,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(XmlBuilderInterface::class, DummyXmlBuilder::class);
-        $this->app->bind(XadesSignerInterface::class, DummyXadesSigner::class);
+        $this->app->bind(XmlBuilderInterface::class, function () {
+            return config('sri.driver', 'dummy') === 'real'
+                ? app(RealXmlBuilder::class)
+                : app(DummyXmlBuilder::class);
+        });
+
+        $this->app->bind(XadesSignerInterface::class, function () {
+            return config('sri.driver', 'dummy') === 'real'
+                ? app(RealXadesSigner::class)
+                : app(DummyXadesSigner::class);
+        });
 
         $this->app->bind(SriClientInterface::class, function () {
             return config('sri.driver', 'dummy') === 'real'

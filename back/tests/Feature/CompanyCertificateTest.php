@@ -123,6 +123,67 @@ class CompanyCertificateTest extends TestCase
         $this->assertStringStartsWith("certificates/{$company->id}/cert_v", $certV2->path);
     }
 
+    public function test_activation_syncs_issuer_identity_from_certificate_but_skips_a_ruc_already_taken(): void
+    {
+        Storage::fake('local');
+        [$company, $owner] = $this->makeCompanyWithRole(CompanyMembershipRole::Owner->value);
+        Sanctum::actingAs($owner);
+
+        $takenRuc = '0919439349001';
+        Company::query()->create(['name' => 'Other Co', 'ruc' => $takenRuc, 'environment' => 'test']);
+
+        $version = $this->postJson("/api/companies/{$company->id}/certificate", [
+            'certificate' => $this->makeCertificateFileWithHolderRuc($takenRuc),
+            'certificate_password' => 'pass123',
+        ])->assertCreated()->json('version');
+
+        $certificate = CompanyCertificate::query()->where('company_id', $company->id)->where('version', $version)->firstOrFail();
+        $this->assertSame($takenRuc, $certificate->holder_ruc);
+        $this->assertSame('GUALBERTO ELIAS', $certificate->holder_name);
+
+        $this->postJson("/api/companies/{$company->id}/certificate/{$version}/activate")->assertOk();
+
+        $fresh = $company->fresh();
+        // RUC untouched: $takenRuc already belongs to "Other Co".
+        $this->assertNotSame($takenRuc, $fresh->ruc);
+        // Name still syncs -- it's not the field that collided.
+        $this->assertSame('GUALBERTO ELIAS', $fresh->name);
+    }
+
+    private function makeCertificateFileWithHolderRuc(string $ruc): UploadedFile
+    {
+        $encodeDer = fn (string $value) => sprintf(
+            '0c:%s:%s',
+            str_pad(dechex(strlen($value)), 2, '0', STR_PAD_LEFT),
+            implode(':', array_map(fn ($c) => str_pad(dechex(ord($c)), 2, '0', STR_PAD_LEFT), str_split($value))),
+        );
+
+        $dir = sys_get_temp_dir().'/sicofac-holder-ruc-'.uniqid();
+        mkdir($dir);
+        $keyPath = "$dir/key.pem";
+        $certPath = "$dir/cert.pem";
+        $p12Path = "$dir/cert.p12";
+
+        exec(sprintf(
+            'openssl req -x509 -newkey rsa:2048 -keyout %s -out %s -days 1 -nodes -subj "/C=EC/O=Test/CN=TEST HOLDER" -addext %s -addext %s 2>&1',
+            escapeshellarg($keyPath),
+            escapeshellarg($certPath),
+            escapeshellarg('1.3.6.1.4.1.59382.3.11=DER:'.$encodeDer($ruc)),
+            escapeshellarg('1.3.6.1.4.1.59382.3.2=DER:'.$encodeDer('GUALBERTO ELIAS')),
+        ), $output, $exitCode);
+        $this->assertSame(0, $exitCode, 'openssl req failed: '.implode("\n", $output));
+
+        exec(sprintf(
+            'openssl pkcs12 -export -out %s -inkey %s -in %s -passout pass:pass123 2>&1',
+            escapeshellarg($p12Path),
+            escapeshellarg($keyPath),
+            escapeshellarg($certPath),
+        ), $output, $exitCode);
+        $this->assertSame(0, $exitCode, 'openssl pkcs12 export failed: '.implode("\n", $output));
+
+        return new UploadedFile($p12Path, 'cert.p12', 'application/x-pkcs12', null, true);
+    }
+
     private function makeCompanyWithRole(string $role, string $email = 'owner@example.com'): array
     {
         $user = User::query()->create([

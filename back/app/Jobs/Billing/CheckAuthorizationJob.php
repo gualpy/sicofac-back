@@ -27,7 +27,7 @@ class CheckAuthorizationJob implements ShouldQueue
 
     public function handle(SriClientInterface $sriClient, InvoiceStateService $stateService): void
     {
-        $invoice = Invoice::query()->findOrFail($this->invoiceId);
+        $invoice = Invoice::query()->with('company')->findOrFail($this->invoiceId);
 
         if ($invoice->status !== InvoiceStatus::SentReception) {
             return;
@@ -35,7 +35,7 @@ class CheckAuthorizationJob implements ShouldQueue
 
         $document = InvoiceDocument::query()->where('invoice_id', $invoice->id)->firstOrFail();
 
-        $response = $sriClient->checkAuthorization($this->accessKey);
+        $response = $sriClient->checkAuthorization($this->accessKey, $invoice->company->environment);
 
         $payload = $invoice->sri_response_payload ?? [];
         $payload['authorization'] = $response->payload;

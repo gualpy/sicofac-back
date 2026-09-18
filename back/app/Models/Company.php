@@ -16,6 +16,11 @@ class Company extends Model
         'address',
         'phone',
         'email',
+        'logo_path',
+        'is_rimpe',
+        'is_special_taxpayer',
+        'is_popular_business',
+        'requires_accounting',
         'ruc',
         'establishment_code',
         'emission_point',
@@ -33,6 +38,10 @@ class Company extends Model
             'sri_signing_enabled' => 'bool',
             'sri_submission_enabled' => 'bool',
             'certificate_uploaded_at' => 'datetime',
+            'is_rimpe' => 'bool',
+            'is_special_taxpayer' => 'bool',
+            'is_popular_business' => 'bool',
+            'requires_accounting' => 'bool',
         ];
     }
 

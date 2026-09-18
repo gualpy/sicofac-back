@@ -15,9 +15,12 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Billing\InvoiceDraftService;
 use App\Services\Billing\InvoiceEmissionService;
 use App\Services\Billing\InvoiceTotalsCalculator;
+use App\Services\Billing\RideGenerator;
 use DomainException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class InvoiceController extends Controller
 {
@@ -195,6 +198,24 @@ class InvoiceController extends Controller
             'invoice_id' => $invoice->id,
             'signing_enabled' => $pipeline->signingEnabled,
             'submission_enabled' => $pipeline->submissionEnabled,
+        ]);
+    }
+
+    public function ride(Company $company, Invoice $invoice, RideGenerator $rideGenerator): Response
+    {
+        $this->authorize('view', $invoice);
+
+        try {
+            $pdf = $rideGenerator->generate($invoice);
+        } catch (RuntimeException $exception) {
+            return response($exception->getMessage(), 409);
+        }
+
+        $filename = "factura-{$invoice->establishment_code}-{$invoice->emission_point}-".str_pad((string) $invoice->sequential, 9, '0', STR_PAD_LEFT).'.pdf';
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "inline; filename=\"{$filename}\"",
         ]);
     }
 

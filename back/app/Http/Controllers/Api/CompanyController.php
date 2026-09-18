@@ -4,11 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\{CompanyMembershipRole, CompanyMembershipStatus};
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Company\{ActivateCertificateRequest, AddCompanyMemberRequest, ChangeEnvironmentRequest, StoreCompanyRequest,UpdateCompanyRequest,UpdateCompanyMemberRequest,UpdateIssuerConfigRequest, UploadCertificateRequest };
+use App\Http\Requests\Company\{ActivateCertificateRequest, AddCompanyMemberRequest, ChangeEnvironmentRequest, StoreCompanyRequest,UpdateCompanyRequest,UpdateCompanyMemberRequest,UpdateIssuerConfigRequest, UploadCertificateRequest, UploadLogoRequest };
 use App\Models\{Company,User};
 use App\Services\Audit\AuditLogger;
 use App\Services\Certificates\CompanyCertificateService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 class CompanyController extends Controller
@@ -178,6 +179,69 @@ class CompanyController extends Controller
         $this->auditLogger->log('company.certificate.deleted', $company, $before, $company->fresh()->toArray(), [
             'active_version_archived' => $active?->version,
         ]);
+
+        return response()->json(status: 204);
+    }
+
+    public function showCertificate(Company $company): JsonResponse
+    {
+        $this->authorize('view', $company);
+
+        $certificate = $this->certificateService->getActiveCertificate($company);
+
+        if (! $certificate) {
+            return response()->json(null);
+        }
+
+        return response()->json([
+            'version' => $certificate->version,
+            'status' => $certificate->status,
+            'is_active' => $certificate->is_active,
+            'subject' => $certificate->subject,
+            'uploaded_at' => $certificate->uploaded_at,
+            'expires_at' => $certificate->expires_at,
+        ]);
+    }
+
+    public function logo(Company $company)
+    {
+        $this->authorize('view', $company);
+
+        if (! $company->logo_path || ! Storage::disk('local')->exists($company->logo_path)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response($company->logo_path);
+    }
+
+    public function uploadLogo(UploadLogoRequest $request, Company $company): JsonResponse
+    {
+        $file = $request->file('logo');
+        $extension = $file->getClientOriginalExtension();
+        $path = "logos/{$company->id}/logo.{$extension}";
+
+        if ($company->logo_path) {
+            Storage::disk('local')->delete($company->logo_path);
+        }
+
+        Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
+        $company->update(['logo_path' => $path]);
+
+        $this->auditLogger->log('company.logo.uploaded', $company, null, ['path' => $path]);
+
+        return response()->json(['logo_path' => $path], 201);
+    }
+
+    public function deleteLogo(Company $company): JsonResponse
+    {
+        $this->authorize('manageIssuerConfig', $company);
+
+        if ($company->logo_path) {
+            Storage::disk('local')->delete($company->logo_path);
+        }
+        $company->update(['logo_path' => null]);
+
+        $this->auditLogger->log('company.logo.deleted', $company, null, null);
 
         return response()->json(status: 204);
     }

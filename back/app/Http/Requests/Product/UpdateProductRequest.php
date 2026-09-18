@@ -38,6 +38,7 @@ class UpdateProductRequest extends FormRequest
                     ->ignore($product->id)
                     ->where(fn ($query) => $query->where('company_id', $company->id)),
             ],
+            'auxiliary_code' => ['sometimes', 'nullable', 'string', 'max:50'],
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'unit_price' => ['sometimes', 'required', 'numeric', 'min:0'],
             'tax_rate' => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
