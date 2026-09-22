@@ -79,4 +79,32 @@ class InvoiceRideTest extends TestCase
         $this->get("/api/companies/{$company->id}/invoices/{$invoiceId}/ride")
             ->assertStatus(409);
     }
+
+    public function test_company_a_cannot_download_ride_of_company_b_authorized_invoice(): void
+    {
+        [$companyB, $invoiceBId] = $this->makeAuthorizedInvoice();
+        $this->postJson("/api/companies/{$companyB->id}/invoices/{$invoiceBId}/emit")->assertOk();
+        $this->assertSame('authorized', \App\Models\Invoice::query()->findOrFail($invoiceBId)->status->value);
+
+        $userA = User::query()->create([
+            'name' => 'Attacker',
+            'email' => 'attacker@example.com',
+            'password' => 'password',
+        ]);
+        $companyA = Company::query()->create([
+            'name' => 'Attacker Co',
+            'ruc' => '0999999999201',
+            'environment' => 'test',
+        ]);
+        $userA->companies()->attach($companyA->id, [
+            'role' => CompanyMembershipRole::Owner->value,
+            'status' => CompanyMembershipStatus::Active->value,
+        ]);
+
+        Sanctum::actingAs($userA);
+
+        $response = $this->get("/api/companies/{$companyA->id}/invoices/{$invoiceBId}/ride");
+        $response->assertNotFound();
+        $this->assertStringNotContainsString('%PDF', $response->getContent());
+    }
 }
