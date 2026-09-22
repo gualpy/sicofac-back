@@ -16,10 +16,13 @@ use App\Services\Billing\InvoiceDraftService;
 use App\Services\Billing\InvoiceEmissionService;
 use App\Services\Billing\InvoiceTotalsCalculator;
 use App\Services\Billing\RideGenerator;
+use App\Enums\InvoiceStatus;
 use DomainException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class InvoiceController extends Controller
@@ -31,13 +34,43 @@ class InvoiceController extends Controller
         $this->authorizeResource(Invoice::class, 'invoice');
     }
 
-    public function index(Company $company): JsonResponse
+    public function index(Request $request, Company $company): JsonResponse
     {
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'array'],
+            'status.*' => ['string', Rule::in(array_column(InvoiceStatus::cases(), 'value'))],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = $company->invoices()->with(['customer', 'items']);
+
+        if ($search = trim((string) ($validated['search'] ?? ''))) {
+            $query->where(function ($inner) use ($search) {
+                $inner->where('document_code', 'like', "%{$search}%")
+                    ->orWhereRaw('CAST(sequential AS TEXT) LIKE ?', ["%{$search}%"])
+                    ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                        $customerQuery->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if (! empty($validated['status'])) {
+            $query->whereIn('status', $validated['status']);
+        }
+
+        if (! empty($validated['from'])) {
+            $query->whereDate('issue_date', '>=', $validated['from']);
+        }
+
+        if (! empty($validated['to'])) {
+            $query->whereDate('issue_date', '<=', $validated['to']);
+        }
+
         return response()->json(
-            $company->invoices()
-                ->with(['customer', 'items'])
-                ->latest()
-                ->paginate(15)
+            $query->latest()->paginate((int) ($validated['per_page'] ?? 15))
         );
     }
 
