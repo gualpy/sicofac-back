@@ -5,6 +5,7 @@ namespace App\Integrations\Sri\Dummy;
 use App\Integrations\Sri\Contracts\SriClientInterface;
 use App\Integrations\Sri\DTOs\SriAuthorizationResponseDTO;
 use App\Integrations\Sri\DTOs\SriReceptionResponseDTO;
+use App\Integrations\Sri\Enums\SriAuthorizationStatus;
 use Illuminate\Support\Str;
 
 class DummySriClient implements SriClientInterface
@@ -25,6 +26,7 @@ class DummySriClient implements SriClientInterface
     public function checkAuthorization(string $accessKey, string $environment): SriAuthorizationResponseDTO
     {
         return new SriAuthorizationResponseDTO(
+            status: SriAuthorizationStatus::Authorized,
             authorized: true,
             authorizationNumber: Str::upper(Str::random(37)),
             messages: ['AUTHORIZED'],

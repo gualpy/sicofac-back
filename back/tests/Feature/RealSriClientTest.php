@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Integrations\Sri\Enums\SriAuthorizationStatus;
 use App\Integrations\Sri\Real\RealSriClient;
 use Tests\TestCase;
 
@@ -87,6 +88,7 @@ class RealSriClientTest extends TestCase
     {
         $response = (new RealSriClient())->checkAuthorization('AK-OK-123', 'test');
 
+        $this->assertSame(SriAuthorizationStatus::Authorized, $response->status);
         $this->assertTrue($response->authorized);
         $this->assertSame('AK-OK-123', $response->authorizationNumber);
     }
@@ -95,9 +97,19 @@ class RealSriClientTest extends TestCase
     {
         $response = (new RealSriClient())->checkAuthorization('AK-RECHAZAR-123', 'test');
 
+        $this->assertSame(SriAuthorizationStatus::Rejected, $response->status);
         $this->assertFalse($response->authorized);
         $this->assertNull($response->authorizationNumber);
         $this->assertNotEmpty($response->messages);
         $this->assertStringContainsString('RUC no existe', $response->messages[0]);
+    }
+
+    public function test_authorization_reports_pending_when_sri_is_still_processing(): void
+    {
+        $response = (new RealSriClient())->checkAuthorization('AK-PPR-123', 'test');
+
+        $this->assertSame(SriAuthorizationStatus::Pending, $response->status);
+        $this->assertFalse($response->authorized);
+        $this->assertNull($response->authorizationNumber);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Integrations\Sri\Real;
 use App\Integrations\Sri\Contracts\SriClientInterface;
 use App\Integrations\Sri\DTOs\SriAuthorizationResponseDTO;
 use App\Integrations\Sri\DTOs\SriReceptionResponseDTO;
+use App\Integrations\Sri\Enums\SriAuthorizationStatus;
 use DOMDocument;
 use RuntimeException;
 use SoapClient;
@@ -93,10 +94,27 @@ class RealSriClient implements SriClientInterface
         $primary = $autorizaciones[0] ?? null;
 
         $estado = $primary ? (string) ($primary->estado ?? '') : '';
-        $authorized = $estado === 'AUTORIZADO';
+
+        // Per the Ficha Tecnica, "AUTORIZADO" and "NO AUTORIZADO" are the
+        // only two *definitive* outcomes the autorizacion WS reports.
+        // Everything else -- an empty <autorizaciones/> (nothing to report
+        // yet), or an explicit "EN PROCESAMIENTO"/"PPR" estado -- means the
+        // SRI has not finished validating the comprobante, and must never be
+        // treated as a rejection. "RECHAZADO" is accepted as a synonym of
+        // "NO AUTORIZADO" since some ambientes/mocks use that wording for
+        // the same definitive-rejection outcome. Anything not recognised at
+        // all falls back to Unknown, handled the same as Pending upstream --
+        // safe (never a silent rejection) rather than assumed resolved.
+        $status = match (true) {
+            $estado === 'AUTORIZADO' => SriAuthorizationStatus::Authorized,
+            in_array($estado, ['NO AUTORIZADO', 'RECHAZADO'], true) => SriAuthorizationStatus::Rejected,
+            $primary === null, in_array($estado, ['EN PROCESAMIENTO', 'PPR'], true) => SriAuthorizationStatus::Pending,
+            default => SriAuthorizationStatus::Unknown,
+        };
 
         return new SriAuthorizationResponseDTO(
-            authorized: $authorized,
+            status: $status,
+            authorized: $status === SriAuthorizationStatus::Authorized,
             authorizationNumber: $primary->numeroAutorizacion ?? null,
             messages: $primary ? $this->extractMessages($primary->mensajes ?? null) : [],
             payload: [

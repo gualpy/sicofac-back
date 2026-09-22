@@ -47,6 +47,19 @@ class MockSriHandler
     {
         $claveAccesoComprobante = $params->claveAccesoComprobante ?? '';
 
+        if (str_contains((string) $claveAccesoComprobante, 'PPR')) {
+            return (object) ['RespuestaAutorizacionComprobante' => (object) [
+                'claveAccesoConsultada' => $claveAccesoComprobante,
+                'numeroComprobantes' => '1',
+                'autorizaciones' => (object) [
+                    'autorizacion' => (object) [
+                        'estado' => 'EN PROCESAMIENTO',
+                        'ambiente' => 'PRUEBAS',
+                    ],
+                ],
+            ]];
+        }
+
         if (str_contains((string) $claveAccesoComprobante, 'RECHAZAR')) {
             return (object) ['RespuestaAutorizacionComprobante' => (object) [
                 'claveAccesoConsultada' => $claveAccesoComprobante,
