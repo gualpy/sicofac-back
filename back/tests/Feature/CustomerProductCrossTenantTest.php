@@ -117,6 +117,35 @@ class CustomerProductCrossTenantTest extends TestCase
         $this->assertSame('Cliente B', $customerB->fresh()->name);
     }
 
+    public function test_company_a_cannot_list_products_or_customers_directly_under_company_b_url(): void
+    {
+        // Regression guard added while building POS (which relies on these same
+        // index endpoints): authorizeResource() maps index -> viewAny(), an
+        // unscoped class-level check, so nothing previously stopped a member of
+        // Company A from listing Company B's data by swapping the URL's company id.
+        [, $userA] = $this->makeCompanyWithOwner('Company A', '0999999999608', 'a5cp@example.com');
+        [$companyB] = $this->makeCompanyWithOwner('Company B', '0999999999609', 'b5cp@example.com');
+
+        Product::query()->create([
+            'company_id' => $companyB->id,
+            'code' => 'SKU-B-2',
+            'name' => 'Producto B',
+            'unit_price' => 10,
+            'tax_rate' => 15,
+        ]);
+        Customer::query()->create([
+            'company_id' => $companyB->id,
+            'name' => 'Cliente B',
+            'identification_type' => '05',
+            'identification_number' => '0966666666',
+        ]);
+
+        Sanctum::actingAs($userA);
+
+        $this->getJson("/api/companies/{$companyB->id}/products")->assertForbidden();
+        $this->getJson("/api/companies/{$companyB->id}/customers")->assertForbidden();
+    }
+
     public function test_company_a_can_update_its_own_customer(): void
     {
         [$companyA, $userA] = $this->makeCompanyWithOwner('Company A', '0999999999606', 'a4cp@example.com');

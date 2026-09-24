@@ -49,6 +49,20 @@ class StoreProductRequest extends FormRequest
             'tax_code' => ['nullable', Rule::in(array_column(TaxCode::cases(), 'value'))],
             'ice_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'is_active' => ['sometimes', 'boolean'],
+            'pos_enabled' => ['sometimes', 'boolean'],
+            'pos_category_id' => [
+                'nullable',
+                Rule::exists('pos_categories', 'id')->where(fn ($query) => $query->where('company_id', $company->id)),
+            ],
+            'pos_label' => ['nullable', 'string', 'max:255'],
+            'barcode' => [
+                'nullable',
+                'string',
+                'max:100',
+                Rule::unique('products', 'barcode')
+                    ->where(fn ($query) => $query->where('company_id', $company->id)),
+            ],
+            'pos_sort_order' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

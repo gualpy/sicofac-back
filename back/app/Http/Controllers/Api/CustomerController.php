@@ -21,6 +21,13 @@ class CustomerController extends Controller
 
     public function index(Request $request, Company $company): JsonResponse
     {
+        // authorizeResource() maps index -> CustomerPolicy::viewAny(), which is
+        // an unscoped class-level check (any authenticated user passes it) since
+        // there is no Customer instance yet to re-derive company_id from. This
+        // guard is what actually keeps a member of another company from listing
+        // this company's customers by changing the URL's {company} segment.
+        abort_unless($request->user()->belongsToCompany($company->id), 403);
+
         $query = $company->customers()->latest();
 
         if ($search = trim((string) $request->query('search', ''))) {

@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Api\{AuthController, CompanyController, CompanyEmissionPointController, CompanyEstablishmentController, CustomerController, InvoiceController, ProductController};
+use App\Http\Controllers\Api\{AuthController, CompanyController, CompanyEmissionPointController, CompanyEstablishmentController, CustomerController, InvoiceController, PosCategoryController, ProductController};
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:login')->name('auth.register');
@@ -51,6 +51,8 @@ Route::middleware('auth:sanctum')->scopeBindings()->group(function () {
         ->middleware('throttle:critical')
         ->name('companies.establishments.emission-points.update');
     Route::apiResource('companies.customers', CustomerController::class);
+    Route::apiResource('companies.pos-categories', PosCategoryController::class)
+        ->parameters(['pos-categories' => 'posCategory']);
     Route::post('companies/{company}/products/import', [ProductController::class, 'import'])
         ->middleware('throttle:critical')
         ->name('companies.products.import');

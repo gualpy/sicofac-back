@@ -45,6 +45,23 @@ class UpdateProductRequest extends FormRequest
             'tax_code' => ['sometimes', 'nullable', Rule::in(array_column(TaxCode::cases(), 'value'))],
             'ice_rate' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
             'is_active' => ['sometimes', 'boolean'],
+            'pos_enabled' => ['sometimes', 'boolean'],
+            'pos_category_id' => [
+                'sometimes',
+                'nullable',
+                Rule::exists('pos_categories', 'id')->where(fn ($query) => $query->where('company_id', $company->id)),
+            ],
+            'pos_label' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'barcode' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:100',
+                Rule::unique('products', 'barcode')
+                    ->ignore($product->id)
+                    ->where(fn ($query) => $query->where('company_id', $company->id)),
+            ],
+            'pos_sort_order' => ['sometimes', 'nullable', 'integer', 'min:0'],
         ];
     }
 }

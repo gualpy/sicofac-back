@@ -23,6 +23,11 @@ class Product extends Model
         'tax_code',
         'ice_rate',
         'is_active',
+        'pos_enabled',
+        'pos_category_id',
+        'pos_label',
+        'barcode',
+        'pos_sort_order',
     ];
 
     protected function casts(): array
@@ -33,6 +38,8 @@ class Product extends Model
             'tax_code' => TaxCode::class,
             'ice_rate' => 'decimal:2',
             'is_active' => 'bool',
+            'pos_enabled' => 'bool',
+            'pos_sort_order' => 'integer',
         ];
     }
 
@@ -44,5 +51,10 @@ class Product extends Model
     public function invoiceItems(): HasMany
     {
         return $this->hasMany(InvoiceItem::class);
+    }
+
+    public function posCategory(): BelongsTo
+    {
+        return $this->belongsTo(PosCategory::class, 'pos_category_id');
     }
 }

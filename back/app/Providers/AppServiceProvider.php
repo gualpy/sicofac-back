@@ -14,10 +14,12 @@ use App\Integrations\Sri\Real\RealXmlBuilder;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\PosCategory;
 use App\Models\Product;
 use App\Policies\CompanyPolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\InvoicePolicy;
+use App\Policies\PosCategoryPolicy;
 use App\Policies\ProductPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -60,6 +62,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
         Gate::policy(Invoice::class, InvoicePolicy::class);
+        Gate::policy(PosCategory::class, PosCategoryPolicy::class);
 
         RateLimiter::for('login', fn (Request $request) => [
             Limit::perMinute(5)->by($request->ip()),

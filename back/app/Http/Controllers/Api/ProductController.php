@@ -25,6 +25,10 @@ class ProductController extends Controller
 
     public function index(Request $request, Company $company): JsonResponse
     {
+        // See CustomerController::index() for why this explicit check is needed:
+        // authorizeResource() only calls ProductPolicy::viewAny() (unscoped) here.
+        abort_unless($request->user()->belongsToCompany($company->id), 403);
+
         $query = $company->products()->latest();
 
         if ($search = trim((string) $request->query('search', ''))) {
@@ -40,6 +44,18 @@ class ProductController extends Controller
 
         if ($name = trim((string) $request->query('name', ''))) {
             $query->where('name', 'like', "%{$name}%");
+        }
+
+        if ($request->has('pos_enabled')) {
+            $query->where('pos_enabled', $request->boolean('pos_enabled'));
+        }
+
+        if ($posCategoryId = $request->query('pos_category_id')) {
+            $query->where('pos_category_id', $posCategoryId);
+        }
+
+        if ($barcode = trim((string) $request->query('barcode', ''))) {
+            $query->where('barcode', $barcode);
         }
 
         return response()->json($query->paginate((int) $request->query('per_page', 15)));
