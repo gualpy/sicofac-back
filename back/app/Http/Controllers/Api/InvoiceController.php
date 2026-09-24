@@ -36,6 +36,10 @@ class InvoiceController extends Controller
 
     public function index(Request $request, Company $company): JsonResponse
     {
+        // authorizeResource() maps index -> InvoicePolicy::viewAny(), which is
+        // an unscoped class-level check — see CustomerController::index().
+        abort_unless($request->user()->belongsToCompany($company->id), 403);
+
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'array'],

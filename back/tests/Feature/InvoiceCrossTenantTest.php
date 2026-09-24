@@ -225,4 +225,22 @@ class InvoiceCrossTenantTest extends TestCase
 
         Bus::assertNotDispatched(BuildXmlJob::class);
     }
+
+    /**
+     * Regression guard for the same collection-level authorizeResource()/viewAny()
+     * gap found and fixed for CustomerController/ProductController::index() while
+     * building POS: nothing previously stopped a member of Company A from listing
+     * Company B's invoices by swapping the URL's company id.
+     */
+    public function test_company_a_cannot_list_invoices_of_company_b(): void
+    {
+        [, $userA] = $this->makeCompanyWithOwner('Company A', '0999999999115', 'a10@example.com');
+        [$companyB, $userB] = $this->makeCompanyWithOwner('Company B', '0999999999116', 'b10@example.com');
+
+        Sanctum::actingAs($userB);
+        $this->makeDraftInvoice($companyB);
+
+        Sanctum::actingAs($userA);
+        $this->getJson("/api/companies/{$companyB->id}/invoices")->assertForbidden();
+    }
 }
