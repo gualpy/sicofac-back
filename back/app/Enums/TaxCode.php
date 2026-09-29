@@ -24,4 +24,19 @@ enum TaxCode: string
             default => self::Rate15,
         };
     }
+
+    /**
+     * The IVA percentage implied by this code, or null when the code doesn't
+     * fix a single rate (Special/"tarifa especial" varies case by case, so
+     * tax_rate must be set explicitly for it).
+     */
+    public function fixedRate(): ?float
+    {
+        return match ($this) {
+            self::Rate15 => 15.0,
+            self::Rate5 => 5.0,
+            self::RateZero, self::NotSubject, self::Exempt => 0.0,
+            self::Special => null,
+        };
+    }
 }

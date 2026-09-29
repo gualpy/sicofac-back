@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\CompanyMembershipRole;
+use App\Enums\TaxCode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\{ExportProductsRequest, ImportProductsRequest, ListProductImportsRequest, ShowProductImportRequest, StoreProductRequest, UpdateProductRequest};
 use App\Models\{Company, Product, ProductImport};
@@ -63,7 +64,13 @@ class ProductController extends Controller
 
     public function store(StoreProductRequest $request, Company $company): JsonResponse
     {
-        $product = $company->products()->create($request->validated());
+        $data = $request->validated();
+        $taxCode = TaxCode::from($data['tax_code'] ?? TaxCode::Rate15->value);
+        if (($fixedRate = $taxCode->fixedRate()) !== null) {
+            $data['tax_rate'] = $fixedRate;
+        }
+
+        $product = $company->products()->create($data);
         $this->auditLogger->log('product.created', $product, null, $product->toArray());
 
         return response()->json($product, 201);
@@ -76,8 +83,14 @@ class ProductController extends Controller
 
     public function update(UpdateProductRequest $request, Company $company, Product $product): JsonResponse
     {
+        $data = $request->validated();
+        $taxCode = isset($data['tax_code']) ? TaxCode::from($data['tax_code']) : $product->tax_code;
+        if (($fixedRate = $taxCode->fixedRate()) !== null) {
+            $data['tax_rate'] = $fixedRate;
+        }
+
         $before = $product->toArray();
-        $product->update($request->validated());
+        $product->update($data);
         $after = $product->fresh()->toArray();
         $this->auditLogger->log('product.updated', $product, $before, $after);
 
