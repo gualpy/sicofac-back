@@ -50,6 +50,41 @@ class ProductImportTest extends TestCase
         ]);
     }
 
+    public function test_import_derives_tax_code_from_tax_rate(): void
+    {
+        [$owner, $company] = $this->ownerCompany();
+        Sanctum::actingAs($owner);
+
+        $csv = implode("\n", [
+            'sku,name,price,tax_rate,is_active',
+            'SKU-15,Producto quince,10,15,1',
+            'SKU-5,Producto cinco,10,5,1',
+            'SKU-0,Producto cero,10,0,1',
+        ]);
+
+        $file = UploadedFile::fake()->createWithContent('products.csv', $csv);
+
+        $this->postJson("/api/companies/{$company->id}/products/import", [
+            'file' => $file,
+        ])->assertStatus(202);
+
+        $this->assertSame('15', Product::query()->where('code', 'SKU-15')->firstOrFail()->tax_code->value);
+        $this->assertSame('5', Product::query()->where('code', 'SKU-5')->firstOrFail()->tax_code->value);
+        $this->assertSame('0', Product::query()->where('code', 'SKU-0')->firstOrFail()->tax_code->value);
+
+        // Re-importing with a changed rate must also refresh tax_code on update,
+        // not just leave it stuck at whatever it was set to on creation.
+        $csvUpdate = implode("\n", [
+            'sku,name,price,tax_rate,is_active',
+            'SKU-15,Producto quince,10,5,1',
+        ]);
+        $this->postJson("/api/companies/{$company->id}/products/import", [
+            'file' => UploadedFile::fake()->createWithContent('products.csv', $csvUpdate),
+        ])->assertStatus(202);
+
+        $this->assertSame('5', Product::query()->where('code', 'SKU-15')->firstOrFail()->tax_code->value);
+    }
+
     public function test_seller_cannot_import_products(): void
     {
         $seller = User::query()->create([

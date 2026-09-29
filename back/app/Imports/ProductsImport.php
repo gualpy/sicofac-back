@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\DTOs\Products\ProductImportResultData;
+use App\Enums\TaxCode;
 use App\Models\Product;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Concerns\OnEachRow;
@@ -56,6 +57,14 @@ class ProductsImport implements OnEachRow, WithHeadingRow, WithChunkReading
 
         $data = $validator->validated();
 
+        // The import only ever supplies a raw tax_rate (no tax_code column
+        // in the template), so tax_code must be derived from it the same
+        // way InvoiceController::toItemDtoArray() does for invoice items —
+        // otherwise a product's tax_code silently drifts out of sync with
+        // its imported rate (e.g. stays at the DB default 15% category
+        // while tax_rate is actually 5%).
+        $taxCode = TaxCode::fromRate((float) ($data['tax_rate'] ?? 0));
+
         $product = Product::query()
             ->where('company_id', $this->companyId)
             ->where('code', $data['sku'])
@@ -68,6 +77,7 @@ class ProductsImport implements OnEachRow, WithHeadingRow, WithChunkReading
                 'name' => $data['name'],
                 'unit_price' => $data['price'],
                 'tax_rate' => $data['tax_rate'] ?? 0,
+                'tax_code' => $taxCode,
                 'is_active' => $data['is_active'] ?? true,
             ]);
             $this->validCount++;
@@ -79,6 +89,7 @@ class ProductsImport implements OnEachRow, WithHeadingRow, WithChunkReading
             'name' => $data['name'],
             'unit_price' => $data['price'],
             'tax_rate' => $data['tax_rate'] ?? 0,
+            'tax_code' => $taxCode,
             'is_active' => $data['is_active'] ?? true,
         ]);
 
