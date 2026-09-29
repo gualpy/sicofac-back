@@ -22,6 +22,7 @@ class Product extends Model
         'tax_rate',
         'tax_code',
         'ice_rate',
+        'ice_code',
         'is_active',
         'pos_enabled',
         'pos_category_id',

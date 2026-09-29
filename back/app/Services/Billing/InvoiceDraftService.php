@@ -72,6 +72,7 @@ class InvoiceDraftService
                     'tax_code' => $item->taxCode,
                     'tax_amount' => $item->taxAmount(),
                     'ice_rate' => $item->iceRate,
+                    'ice_code' => $item->iceCode,
                     'ice_amount' => $item->iceAmount(),
                     'subtotal' => $item->subtotal(),
                     'total' => $item->total(),

@@ -48,6 +48,11 @@ class StoreProductRequest extends FormRequest
             'tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'tax_code' => ['nullable', Rule::in(array_column(TaxCode::cases(), 'value'))],
             'ice_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'ice_code' => [
+                Rule::requiredIf(fn () => (float) $this->input('ice_rate', 0) > 0),
+                'nullable',
+                'regex:/^\d{4}$/',
+            ],
             'is_active' => ['sometimes', 'boolean'],
             'pos_enabled' => ['sometimes', 'boolean'],
             'pos_category_id' => [

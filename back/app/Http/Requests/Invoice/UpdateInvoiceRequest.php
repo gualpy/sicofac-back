@@ -50,6 +50,7 @@ class UpdateInvoiceRequest extends FormRequest
             'items.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.tax_code' => ['nullable', Rule::in(array_column(TaxCode::cases(), 'value'))],
             'items.*.ice_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.ice_code' => ['nullable', 'string', 'regex:/^\d{4}$/'],
 
             'payment_methods' => ['sometimes', 'array'],
             'payment_methods.*.method' => ['required_with:payment_methods', Rule::in(array_column(PaymentMethod::cases(), 'value'))],

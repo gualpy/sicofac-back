@@ -151,4 +151,43 @@ class RealXmlBuilderTest extends TestCase
 
         app(RealXmlBuilder::class)->build($invoice->fresh());
     }
+
+    public function test_it_builds_ice_impuesto_nodes_when_ice_code_is_configured(): void
+    {
+        $invoice = $this->makeInvoice();
+        $invoice->items()->first()->update([
+            'ice_rate' => 50,
+            'ice_code' => '3072',
+            'ice_amount' => 20.00, // subtotal(40) * 50%
+            'tax_amount' => 9.00, // (subtotal(40) + ice(20)) * 15%
+        ]);
+
+        $xml = new \SimpleXMLElement(app(RealXmlBuilder::class)->build($invoice->fresh()));
+
+        $impuestos = $xml->detalles->detalle->impuestos->impuesto;
+        $this->assertCount(2, $impuestos);
+
+        $iva = $impuestos[0];
+        $this->assertSame('2', (string) $iva->codigo);
+        $this->assertSame('60.00', (string) $iva->baseImponible); // subtotal + ice_amount
+        $this->assertSame('9.00', (string) $iva->valor);
+
+        $ice = $impuestos[1];
+        $this->assertSame('3', (string) $ice->codigo);
+        $this->assertSame('3072', (string) $ice->codigoPorcentaje);
+        $this->assertSame('40.00', (string) $ice->baseImponible); // plain subtotal
+        $this->assertSame('20.00', (string) $ice->valor);
+
+        $iceTotal = null;
+        foreach ($xml->infoFactura->totalConImpuestos->totalImpuesto as $totalImpuesto) {
+            if ((string) $totalImpuesto->codigo === '3') {
+                $iceTotal = $totalImpuesto;
+            }
+        }
+
+        $this->assertNotNull($iceTotal);
+        $this->assertSame('3072', (string) $iceTotal->codigoPorcentaje);
+        $this->assertSame('40.00', (string) $iceTotal->baseImponible);
+        $this->assertSame('20.00', (string) $iceTotal->valor);
+    }
 }

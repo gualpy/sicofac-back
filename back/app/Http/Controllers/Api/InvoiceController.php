@@ -147,6 +147,7 @@ class InvoiceController extends Controller
                         'tax_code' => $item->taxCode,
                         'tax_amount' => $item->taxAmount(),
                         'ice_rate' => $item->iceRate,
+                        'ice_code' => $item->iceCode,
                         'ice_amount' => $item->iceAmount(),
                         'subtotal' => $item->subtotal(),
                         'total' => $item->total(),
@@ -279,6 +280,7 @@ class InvoiceController extends Controller
                     taxRate: $taxRate,
                     taxCode: $taxCode,
                     iceRate: (float) ($item['ice_rate'] ?? 0),
+                    iceCode: $item['ice_code'] ?? null,
                 );
             },
             $items

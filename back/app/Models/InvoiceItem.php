@@ -23,6 +23,7 @@ class InvoiceItem extends Model
         'tax_code',
         'tax_amount',
         'ice_rate',
+        'ice_code',
         'ice_amount',
         'subtotal',
         'total',

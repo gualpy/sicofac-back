@@ -16,6 +16,7 @@ final readonly class InvoiceItemData
         public float $taxRate = 0.0,
         public TaxCode $taxCode = TaxCode::Rate15,
         public float $iceRate = 0.0,
+        public ?string $iceCode = null,
     ) {
     }
 

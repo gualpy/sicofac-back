@@ -44,6 +44,11 @@ class UpdateProductRequest extends FormRequest
             'tax_rate' => ['sometimes', 'required', 'numeric', 'min:0', 'max:100'],
             'tax_code' => ['sometimes', 'nullable', Rule::in(array_column(TaxCode::cases(), 'value'))],
             'ice_rate' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
+            'ice_code' => [
+                Rule::requiredIf(fn () => (float) $this->input('ice_rate', $product->ice_rate) > 0),
+                'nullable',
+                'regex:/^\d{4}$/',
+            ],
             'is_active' => ['sometimes', 'boolean'],
             'pos_enabled' => ['sometimes', 'boolean'],
             'pos_category_id' => [

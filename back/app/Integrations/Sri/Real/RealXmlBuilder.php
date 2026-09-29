@@ -158,14 +158,31 @@ class RealXmlBuilder implements XmlBuilderInterface
             $totalImpuesto->addChild('valor', $this->money(0));
         }
 
-        if ((float) $invoice->ice_total > 0.0) {
-            // ICE (codigo 3, Tabla 16) requires a product-category code from
-            // Tabla 18 (e.g. 3072), which nothing in the data model captures
-            // yet (Product/InvoiceItem only store a free ice_rate percentage).
-            // Refuse rather than emit a guessed code that SRI would reject.
-            throw new RuntimeException(
-                "Invoice #{$invoice->id} has ICE charges but no Tabla 18 product code is configured yet."
-            );
+        // ICE (codigo 3, Tabla 16) needs its own <totalImpuesto> per Tabla 18
+        // product-category code, since a single invoice can legitimately mix
+        // items from different ICE categories (e.g. cigarettes + sodas).
+        $iceBuckets = [];
+        foreach ($invoice->items as $item) {
+            if ((float) $item->ice_amount <= 0.0) {
+                continue;
+            }
+
+            if (! $item->ice_code) {
+                throw new RuntimeException(
+                    "InvoiceItem #{$item->id} has an ICE charge but no Tabla 18 ice_code configured."
+                );
+            }
+
+            $iceBuckets[$item->ice_code]['base'] = ($iceBuckets[$item->ice_code]['base'] ?? 0.0) + (float) $item->subtotal;
+            $iceBuckets[$item->ice_code]['value'] = ($iceBuckets[$item->ice_code]['value'] ?? 0.0) + (float) $item->ice_amount;
+        }
+
+        foreach ($iceBuckets as $code => $bucket) {
+            $totalImpuesto = $totalConImpuestos->addChild('totalImpuesto');
+            $totalImpuesto->addChild('codigo', '3'); // Tabla 16: ICE
+            $totalImpuesto->addChild('codigoPorcentaje', (string) $code);
+            $totalImpuesto->addChild('baseImponible', $this->money($bucket['base']));
+            $totalImpuesto->addChild('valor', $this->money($bucket['value']));
         }
     }
 
@@ -220,16 +237,30 @@ class RealXmlBuilder implements XmlBuilderInterface
             ? '6'
             : ($item->tax_code === TaxCode::Exempt ? '7' : $this->codigoPorcentajeForRate((float) $item->tax_rate));
 
+        // ICE widens the IVA taxable base (InvoiceItemData::taxAmount()), so
+        // the declared baseImponible here must include it too, or valor
+        // won't match baseImponible * tarifa as the SRI expects.
+        $ivaBase = (float) $item->subtotal + (float) $item->ice_amount;
+
         $impuesto->addChild('codigo', '2'); // Tabla 16: IVA
         $impuesto->addChild('codigoPorcentaje', $code);
         $impuesto->addChild('tarifa', $this->money($item->tax_rate));
-        $impuesto->addChild('baseImponible', $this->money($item->subtotal));
+        $impuesto->addChild('baseImponible', $this->money($ivaBase));
         $impuesto->addChild('valor', $this->money($item->tax_amount));
 
         if ((float) $item->ice_amount > 0.0) {
-            throw new RuntimeException(
-                "InvoiceItem #{$item->id} has an ICE charge but no Tabla 18 product code is configured yet."
-            );
+            if (! $item->ice_code) {
+                throw new RuntimeException(
+                    "InvoiceItem #{$item->id} has an ICE charge but no Tabla 18 ice_code configured."
+                );
+            }
+
+            $iceImpuesto = $impuestos->addChild('impuesto');
+            $iceImpuesto->addChild('codigo', '3'); // Tabla 16: ICE
+            $iceImpuesto->addChild('codigoPorcentaje', $item->ice_code);
+            $iceImpuesto->addChild('tarifa', $this->money($item->ice_rate));
+            $iceImpuesto->addChild('baseImponible', $this->money($item->subtotal));
+            $iceImpuesto->addChild('valor', $this->money($item->ice_amount));
         }
     }
 
