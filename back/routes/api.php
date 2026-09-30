@@ -5,6 +5,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:login')->name('auth.register');
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('auth.login');
+Route::get('auth/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+    ->middleware(['signed', 'throttle:login'])
+    ->name('verification.verify');
+Route::post('auth/email/resend', [AuthController::class, 'resendVerification'])
+    ->middleware('throttle:login')
+    ->name('verification.resend');
 
 Route::middleware('auth:sanctum')->scopeBindings()->group(function () {
     Route::get('auth/me', [AuthController::class, 'me'])->name('auth.me');

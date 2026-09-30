@@ -101,6 +101,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Email Verification Link Expiration
+    |--------------------------------------------------------------------------
+    |
+    | Minutes a signed email-verification link stays valid for. 1440 = 24h,
+    | per product decision (registration confirmation flow).
+    |
+    */
+
+    'verification' => [
+        'expire' => env('AUTH_VERIFICATION_EXPIRE', 1440),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Password Confirmation Timeout
     |--------------------------------------------------------------------------
     |

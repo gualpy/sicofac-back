@@ -7,9 +7,12 @@ use App\Enums\CompanyMembershipStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\ResendVerificationRequest;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -67,10 +70,12 @@ class AuthController extends Controller
             return [$user, $company->fresh()];
         });
 
-        $token = $user->createToken($data['device_name'] ?? 'api')->plainTextToken;
+        // Account exists but stays unusable (see login()) until the user
+        // clicks the emailed confirmation link -- no token issued here.
+        $user->sendEmailVerificationNotification();
 
         return response()->json([
-            'token' => $token,
+            'message' => 'Cuenta creada. Revisa tu correo para confirmarla.',
             'user' => $user,
             'company' => $company,
         ], 201);
@@ -106,6 +111,13 @@ class AuthController extends Controller
             ]);
         }
 
+        if (! $user->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Debes confirmar tu correo antes de iniciar sesion.',
+                'code' => 'EMAIL_NOT_VERIFIED',
+            ], 403);
+        }
+
         $token = $user->createToken($data['device_name'] ?? 'api')->plainTextToken;
 
         return response()->json([
@@ -138,6 +150,54 @@ class AuthController extends Controller
         $user->currentAccessToken()?->delete();
 
         return response()->json(status: 204);
+    }
+
+    #[OA\Get(
+        path: '/auth/email/verify/{id}/{hash}',
+        tags: ['Auth'],
+        description: 'Signed link from the confirmation email. Marks the account verified and redirects to the SPA -- the raw link is meant to be opened directly from the inbox, not called by the frontend as an API.',
+        responses: [new OA\Response(response: 302, description: 'Redirects to the frontend, verified or already-verified either way')]
+    )]
+    public function verifyEmail(Request $request, string $id, string $hash): RedirectResponse
+    {
+        $user = User::query()->find($id);
+
+        if (! $user || ! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
+            return redirect()->away(config('app.frontend_url').'/email-confirmado?ok=0');
+        }
+
+        if (! $user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+        }
+
+        return redirect()->away(config('app.frontend_url').'/email-confirmado?ok=1');
+    }
+
+    #[OA\Post(
+        path: '/auth/email/resend',
+        tags: ['Auth'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(required: ['email'], properties: [
+                new OA\Property(property: 'email', type: 'string', format: 'email'),
+            ])
+        ),
+        responses: [new OA\Response(response: 200, description: 'Generic success -- never reveals whether the email exists')]
+    )]
+    public function resendVerification(ResendVerificationRequest $request): JsonResponse
+    {
+        $user = User::query()->where('email', $request->validated('email'))->first();
+
+        if ($user && ! $user->hasVerifiedEmail()) {
+            $user->sendEmailVerificationNotification();
+        }
+
+        // Same response whether the account exists, is already verified, or
+        // isn't found -- resend is a public unauthenticated endpoint and
+        // must not leak which emails are registered.
+        return response()->json([
+            'message' => 'Si el correo esta registrado y pendiente de confirmar, te reenviamos el enlace.',
+        ]);
     }
 }
 

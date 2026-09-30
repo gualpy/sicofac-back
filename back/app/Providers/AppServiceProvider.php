@@ -21,8 +21,10 @@ use App\Policies\CustomerPolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\PosCategoryPolicy;
 use App\Policies\ProductPolicy;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -58,6 +60,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        VerifyEmail::toMailUsing(function ($notifiable, string $url) {
+            return (new MailMessage)
+                ->subject('Confirma tu cuenta - SICOFAC')
+                ->greeting('Hola '.$notifiable->name.',')
+                ->line('Gracias por registrarte en SICOFAC. Confirma tu correo para activar tu cuenta.')
+                ->action('Confirmar mi cuenta', $url)
+                ->line('Este enlace vence en 24 horas.')
+                ->line('Si no creaste esta cuenta, puedes ignorar este correo.');
+        });
+
         Gate::policy(Company::class, CompanyPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);

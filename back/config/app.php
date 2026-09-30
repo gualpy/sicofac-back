@@ -54,6 +54,11 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Where the decoupled React SPA lives -- used to redirect the user back
+    // there after clicking the signed email-verification link (this app has
+    // no Blade views of its own to land on).
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
