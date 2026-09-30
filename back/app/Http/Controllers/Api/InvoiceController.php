@@ -49,7 +49,7 @@ class InvoiceController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $query = $company->invoices()->with(['customer', 'items']);
+        $query = $company->invoices()->with(['customer', 'items', 'paymentMethods']);
 
         if ($search = trim((string) ($validated['search'] ?? ''))) {
             $query->where(function ($inner) use ($search) {
