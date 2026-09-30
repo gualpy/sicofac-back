@@ -41,6 +41,7 @@ class SendReceptionJob implements ShouldQueue
             $stateService->setStatus($invoice, InvoiceStatus::Rejected, [
                 'stage' => 'reception',
                 'messages' => $response->messages,
+                'message_details' => $response->messageDetails,
                 'payload' => $response->payload,
             ]);
 
@@ -50,6 +51,7 @@ class SendReceptionJob implements ShouldQueue
         $stateService->setStatus($invoice, InvoiceStatus::SentReception, [
             'access_key' => $response->accessKey,
             'messages' => $response->messages,
+            'message_details' => $response->messageDetails,
         ]);
 
         $invoice->update([

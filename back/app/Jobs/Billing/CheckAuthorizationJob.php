@@ -71,6 +71,7 @@ class CheckAuthorizationJob implements ShouldQueue
 
             $stateService->setStatus($invoice, InvoiceStatus::Authorized, [
                 'messages' => $response->messages,
+                'message_details' => $response->messageDetails,
             ]);
 
             return;
@@ -83,6 +84,7 @@ class CheckAuthorizationJob implements ShouldQueue
 
             $stateService->setStatus($invoice, InvoiceStatus::Rejected, [
                 'messages' => $response->messages,
+                'message_details' => $response->messageDetails,
             ]);
 
             return;
@@ -104,6 +106,7 @@ class CheckAuthorizationJob implements ShouldQueue
                 'sri_status' => $response->status->value,
                 'attempts' => $this->attempt,
                 'messages' => $response->messages,
+                'message_details' => $response->messageDetails,
             ]);
 
             return;
@@ -116,6 +119,7 @@ class CheckAuthorizationJob implements ShouldQueue
                 'sri_status' => $response->status->value,
                 'attempt' => $this->attempt,
                 'messages' => $response->messages,
+                'message_details' => $response->messageDetails,
             ],
         ]);
 

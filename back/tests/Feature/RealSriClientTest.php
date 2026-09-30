@@ -82,6 +82,10 @@ class RealSriClientTest extends TestCase
         $this->assertNull($response->accessKey);
         $this->assertNotEmpty($response->messages);
         $this->assertStringContainsString('DOCUMENTO INVALIDO', $response->messages[0]);
+        $this->assertSame('35', $response->messageDetails[0]['code']);
+        $this->assertSame('DOCUMENTO INVALIDO', $response->messageDetails[0]['message']);
+        $this->assertSame('Estructura invalida', $response->messageDetails[0]['additional_info']);
+        $this->assertSame('ERROR', $response->messageDetails[0]['type']);
     }
 
     public function test_authorization_reports_authorized(): void
@@ -102,6 +106,9 @@ class RealSriClientTest extends TestCase
         $this->assertNull($response->authorizationNumber);
         $this->assertNotEmpty($response->messages);
         $this->assertStringContainsString('RUC no existe', $response->messages[0]);
+        $this->assertSame('46', $response->messageDetails[0]['code']);
+        $this->assertSame('RUC no existe', $response->messageDetails[0]['message']);
+        $this->assertSame('ERROR', $response->messageDetails[0]['type']);
     }
 
     public function test_authorization_reports_pending_when_sri_is_still_processing(): void

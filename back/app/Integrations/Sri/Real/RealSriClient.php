@@ -53,8 +53,10 @@ class RealSriClient implements SriClientInterface
 
         $comprobantes = $this->normalizeList($respuesta->comprobantes->comprobante ?? null);
         $messages = [];
+        $messageDetails = [];
         foreach ($comprobantes as $comprobante) {
             $messages = [...$messages, ...$this->extractMessages($comprobante->mensajes ?? null)];
+            $messageDetails = [...$messageDetails, ...$this->extractMessageDetails($comprobante->mensajes ?? null)];
         }
 
         return new SriReceptionResponseDTO(
@@ -65,6 +67,7 @@ class RealSriClient implements SriClientInterface
             // XML (see AccessKeyGenerator), so just read it back out.
             accessKey: $success ? $this->extractAccessKey($signedXml) : null,
             messages: $messages,
+            messageDetails: $messageDetails,
             payload: [
                 'mode' => 'real',
                 'environment' => $environment,
@@ -117,6 +120,7 @@ class RealSriClient implements SriClientInterface
             authorized: $status === SriAuthorizationStatus::Authorized,
             authorizationNumber: $primary->numeroAutorizacion ?? null,
             messages: $primary ? $this->extractMessages($primary->mensajes ?? null) : [],
+            messageDetails: $primary ? $this->extractMessageDetails($primary->mensajes ?? null) : [],
             payload: [
                 'mode' => 'real',
                 'environment' => $environment,
@@ -176,6 +180,33 @@ class RealSriClient implements SriClientInterface
         }
 
         return $messages;
+    }
+
+    /**
+     * Structured counterpart to extractMessages(): keeps identificador/mensaje/
+     * informacionAdicional/tipo as separate fields instead of one concatenated
+     * string, so a future UI can filter/format by code or severity (tipo)
+     * instead of pattern-matching a flat "code - text - extra" string.
+     *
+     * @return array<int, array{code: ?string, message: string, additional_info: ?string, type: ?string}>
+     */
+    private function extractMessageDetails(mixed $mensajesContainer): array
+    {
+        if ($mensajesContainer === null) {
+            return [];
+        }
+
+        $details = [];
+        foreach ($this->normalizeList($mensajesContainer->mensaje ?? null) as $mensaje) {
+            $details[] = [
+                'code' => $mensaje->identificador ?? null,
+                'message' => (string) ($mensaje->mensaje ?? ''),
+                'additional_info' => $mensaje->informacionAdicional ?? null,
+                'type' => $mensaje->tipo ?? null,
+            ];
+        }
+
+        return $details;
     }
 
     private function extractAccessKey(string $signedXml): ?string
