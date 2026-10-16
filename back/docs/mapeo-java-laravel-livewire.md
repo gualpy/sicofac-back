@@ -1,5 +1,14 @@
 # Mapeo Legacy Java -> Laravel + Livewire
 
+> **OBSOLETO (2026-10-16):** este doc es el mapeo inicial del sistema legacy a
+> Laravel, escrito antes de decidir el frontend. La seccion 6 ("Diseño tecnico
+> recomendado") propone **Livewire 3 + Blade** — eso nunca se construyo asi.
+> La arquitectura real y vigente es **Laravel API + React SPA separada**
+> (ver `back/CLAUDE.md`), sin Livewire ni Blade en ningun punto del flujo de
+> facturacion. El resto del doc (mapeo de tablas legacy, modulos, riesgos)
+> sigue siendo referencia historica valida; solo la seccion 6 y el paso 5 del
+> roadmap (seccion 7) estan superados.
+
 ## 1) Fuentes relevadas
 - `ComprobantesElectronicosOffline/base/*.script`
 - `ComprobantesElectronicosOffline/base/*.log`
@@ -67,10 +76,10 @@ Estados propuestos de comprobante en DB:
 - `Configuracion`: emisor, ambiente (pruebas/produccion), proxy, rutas, certificado.
 - `Auditoria`: eventos de estado, trazas de jobs, reintentos.
 
-## 6) Diseño tecnico recomendado
+## 6) Diseño tecnico recomendado (OBSOLETO - ver nota al inicio del doc)
 - Backend: Laravel 12.
-- Front: Livewire 3 + Blade.
-- DB: MySQL 8.
+- ~~Front: Livewire 3 + Blade.~~ **Superado: React SPA separada (`front/`), ver `back/CLAUDE.md`.**
+- ~~DB: MySQL 8.~~ **Superado: PostgreSQL (ver `.env.example`).**
 - Cola: Redis + Horizon.
 - Archivos: `storage/app/comprobantes/{tenant}/{estado}`.
 - Scheduler:
@@ -82,7 +91,7 @@ Estados propuestos de comprobante en DB:
 2. Migrar configuracion de emisor/proxy/directorios desde `base/*.script`.
 3. Construir modulo de secuenciales + clave de acceso (con bloqueo transaccional).
 4. Implementar pipeline asyncrono de XML -> firma -> envio -> autorizacion.
-5. Construir UI Livewire para emision y seguimiento de estados.
+5. ~~Construir UI Livewire para emision y seguimiento de estados.~~ **Superado: UI construida en React SPA (`front/`).**
 6. Importar historico de catalogos/productos/clientes.
 7. Pruebas E2E con ambiente SRI pruebas y luego corte a produccion.
 
