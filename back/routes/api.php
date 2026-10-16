@@ -11,6 +11,12 @@ Route::get('auth/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail
 Route::post('auth/email/resend', [AuthController::class, 'resendVerification'])
     ->middleware('throttle:login')
     ->name('verification.resend');
+Route::get('auth/invitations/{token}', [AuthController::class, 'showInvitation'])
+    ->middleware('throttle:login')
+    ->name('invitations.show');
+Route::post('auth/invitations/{token}/accept', [AuthController::class, 'acceptInvitation'])
+    ->middleware('throttle:login')
+    ->name('invitations.accept');
 
 Route::middleware('auth:sanctum')->scopeBindings()->group(function () {
     Route::get('auth/me', [AuthController::class, 'me'])->name('auth.me');
@@ -48,6 +54,14 @@ Route::middleware('auth:sanctum')->scopeBindings()->group(function () {
     Route::patch('companies/{company}/members/{user}', [CompanyController::class, 'updateMember'])
         ->middleware('throttle:critical')
         ->name('companies.members.update');
+    Route::get('companies/{company}/members', [CompanyController::class, 'listMembers'])
+        ->name('companies.members.index');
+    Route::post('companies/{company}/invitations', [CompanyController::class, 'inviteMember'])
+        ->middleware('throttle:critical')
+        ->name('companies.invitations.store');
+    Route::delete('companies/{company}/invitations/{invitation}', [CompanyController::class, 'revokeInvitation'])
+        ->middleware('throttle:critical')
+        ->name('companies.invitations.destroy');
     Route::get('companies/{company}/establishments', [CompanyEstablishmentController::class, 'index'])
         ->name('companies.establishments.index');
     Route::post('companies/{company}/establishments/{establishment}/emission-points', [CompanyEmissionPointController::class, 'store'])

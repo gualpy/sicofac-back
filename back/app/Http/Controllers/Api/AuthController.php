@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Enums\CompanyMembershipRole;
 use App\Enums\CompanyMembershipStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\AcceptInvitationRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResendVerificationRequest;
 use App\Models\Company;
+use App\Models\CompanyInvitation;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -198,6 +200,81 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Si el correo esta registrado y pendiente de confirmar, te reenviamos el enlace.',
         ]);
+    }
+
+    #[OA\Get(
+        path: '/auth/invitations/{token}',
+        tags: ['Auth'],
+        description: 'Public lookup for the accept-invitation page: tells the frontend whether to show a password field (new user) or just a confirmation (existing account).',
+        responses: [
+            new OA\Response(response: 200, description: 'Invitation details'),
+            new OA\Response(response: 404, description: 'Invalid, expired, or already-used invitation'),
+        ]
+    )]
+    public function showInvitation(string $token): JsonResponse
+    {
+        $invitation = CompanyInvitation::query()->where('token', $token)->first();
+
+        if (! $invitation || ! $invitation->isPending()) {
+            return response()->json(['message' => 'Invitacion invalida o vencida.'], 404);
+        }
+
+        return response()->json([
+            'email' => $invitation->email,
+            'role' => $invitation->role,
+            'company_name' => $invitation->company->name,
+            'requires_password' => ! User::query()->where('email', $invitation->email)->exists(),
+        ]);
+    }
+
+    #[OA\Post(
+        path: '/auth/invitations/{token}/accept',
+        tags: ['Auth'],
+        description: 'Accepts a company invitation. Creates the user (and marks the email pre-verified, since the invite link itself proves ownership) when the email has no account yet, otherwise just attaches the existing user to the company.',
+        requestBody: new OA\RequestBody(
+            content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'name', type: 'string', nullable: true, description: 'Required only when the invited email has no existing account'),
+                new OA\Property(property: 'password', type: 'string', format: 'password', nullable: true, description: 'Required only when the invited email has no existing account'),
+            ])
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Invitation accepted'),
+            new OA\Response(response: 404, description: 'Invalid, expired, or already-used invitation'),
+        ]
+    )]
+    public function acceptInvitation(AcceptInvitationRequest $request, string $token): JsonResponse
+    {
+        $invitation = CompanyInvitation::query()->where('token', $token)->first();
+
+        if (! $invitation || ! $invitation->isPending()) {
+            return response()->json(['message' => 'Invitacion invalida o vencida.'], 404);
+        }
+
+        $data = $request->validated();
+
+        DB::transaction(function () use ($invitation, $data) {
+            $user = User::query()->where('email', $invitation->email)->first();
+
+            if (! $user) {
+                $user = User::query()->create([
+                    'name' => $data['name'],
+                    'email' => $invitation->email,
+                    'password' => $data['password'],
+                ]);
+                $user->forceFill(['email_verified_at' => now()])->save();
+            }
+
+            $user->companies()->syncWithoutDetaching([
+                $invitation->company_id => [
+                    'role' => $invitation->role,
+                    'status' => CompanyMembershipStatus::Active->value,
+                ],
+            ]);
+
+            $invitation->update(['accepted_at' => now()]);
+        });
+
+        return response()->json(['message' => 'Invitacion aceptada. Ya podes iniciar sesion.']);
     }
 }
 

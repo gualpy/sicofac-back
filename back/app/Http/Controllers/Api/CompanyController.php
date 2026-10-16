@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\{CompanyMembershipRole, CompanyMembershipStatus};
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Company\{ActivateCertificateRequest, AddCompanyMemberRequest, ChangeEnvironmentRequest, StoreCompanyRequest,UpdateCompanyRequest,UpdateCompanyMemberRequest,UpdateIssuerConfigRequest, UploadCertificateRequest, UploadLogoRequest };
-use App\Models\{Company,User};
+use App\Http\Requests\Company\{ActivateCertificateRequest, AddCompanyMemberRequest, ChangeEnvironmentRequest, InviteCompanyMemberRequest, StoreCompanyRequest,UpdateCompanyRequest,UpdateCompanyMemberRequest,UpdateIssuerConfigRequest, UploadCertificateRequest, UploadLogoRequest };
+use App\Models\{Company,CompanyInvitation,User};
+use App\Notifications\CompanyInvitationNotification;
 use App\Services\Audit\AuditLogger;
 use App\Services\Certificates\CompanyCertificateService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class CompanyController extends Controller
@@ -300,5 +304,90 @@ class CompanyController extends Controller
             'user_id' => $user->id,
             'pivot' => $pivotAfter,
         ]);
+    }
+
+    public function listMembers(Company $company): JsonResponse
+    {
+        $this->authorize('manageUsers', $company);
+
+        $members = $company->users()->get(['users.id', 'users.name', 'users.email'])->map(fn (User $user) => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->pivot->role,
+            'status' => $user->pivot->status,
+        ])->values();
+
+        $pendingInvitations = CompanyInvitation::query()
+            ->where('company_id', $company->id)
+            ->whereNull('accepted_at')
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())
+            ->orderByDesc('created_at')
+            ->get(['id', 'email', 'role', 'expires_at']);
+
+        return response()->json([
+            'members' => $members,
+            'pending_invitations' => $pendingInvitations,
+        ]);
+    }
+
+    public function inviteMember(InviteCompanyMemberRequest $request, Company $company): JsonResponse
+    {
+        $data = $request->validated();
+
+        $alreadyMember = $company->users()
+            ->where('email', $data['email'])
+            ->wherePivot('status', CompanyMembershipStatus::Active->value)
+            ->exists();
+
+        if ($alreadyMember) {
+            throw ValidationException::withMessages(['email' => ['Ya es miembro de esta empresa.']]);
+        }
+
+        CompanyInvitation::query()
+            ->where('company_id', $company->id)
+            ->where('email', $data['email'])
+            ->whereNull('accepted_at')
+            ->whereNull('revoked_at')
+            ->delete();
+
+        $invitation = CompanyInvitation::query()->create([
+            'company_id' => $company->id,
+            'invited_by' => $request->user()->id,
+            'email' => $data['email'],
+            'role' => $data['role'],
+            'token' => Str::random(64),
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        Notification::route('mail', $invitation->email)
+            ->notify(new CompanyInvitationNotification($invitation));
+
+        $this->auditLogger->log(
+            'company.invitation.created',
+            $company,
+            null,
+            ['email' => $data['email'], 'role' => $data['role']],
+        );
+
+        return response()->json(['message' => 'Invitacion enviada.'], 201);
+    }
+
+    public function revokeInvitation(Company $company, CompanyInvitation $invitation): JsonResponse
+    {
+        $this->authorize('manageUsers', $company);
+        abort_unless($invitation->company_id === $company->id, 404);
+
+        $invitation->update(['revoked_at' => now()]);
+
+        $this->auditLogger->log(
+            'company.invitation.revoked',
+            $company,
+            null,
+            ['email' => $invitation->email],
+        );
+
+        return response()->json(status: 204);
     }
 }

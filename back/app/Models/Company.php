@@ -86,4 +86,9 @@ class Company extends Model
     {
         return $this->hasMany(PosCategory::class);
     }
+
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(CompanyInvitation::class);
+    }
 }
