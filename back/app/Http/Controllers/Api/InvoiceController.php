@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\Billing\InvoiceItemData;
+use App\Enums\InvoiceStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Invoice\StoreInvoiceRequest;
 use App\Http\Requests\Invoice\UpdateInvoiceRequest;
@@ -14,8 +15,8 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Billing\InvoiceDraftService;
 use App\Services\Billing\InvoiceEmissionService;
 use App\Services\Billing\InvoiceTotalsCalculator;
+use App\Services\Billing\PlanLimitService;
 use App\Services\Billing\RideGenerator;
-use App\Enums\InvoiceStatus;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,8 +29,7 @@ class InvoiceController extends Controller
 {
     public function __construct(
         private readonly AuditLogger $auditLogger,
-    )
-    {
+    ) {
         $this->authorizeResource(Invoice::class, 'invoice');
     }
 
@@ -81,8 +81,11 @@ class InvoiceController extends Controller
         StoreInvoiceRequest $request,
         Company $company,
         InvoiceDraftService $draftService,
+        PlanLimitService $planLimits,
     ): JsonResponse {
         $validated = $request->validated();
+
+        $planLimits->assertCanCreateDocument($company);
 
         $invoice = $draftService->create(
             companyId: $company->id,

@@ -2,15 +2,29 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\{CompanyMembershipRole, CompanyMembershipStatus};
+use App\Enums\CompanyMembershipRole;
+use App\Enums\CompanyMembershipStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Company\{ActivateCertificateRequest, AddCompanyMemberRequest, ChangeEnvironmentRequest, CreateApiKeyRequest, InviteCompanyMemberRequest, StoreCompanyRequest,UpdateCompanyRequest,UpdateCompanyMemberRequest,UpdateIssuerConfigRequest, UploadCertificateRequest, UploadLogoRequest };
-use App\Models\{Company,CompanyInvitation,User};
-use Illuminate\Http\Request;
+use App\Http\Requests\Company\ActivateCertificateRequest;
+use App\Http\Requests\Company\AddCompanyMemberRequest;
+use App\Http\Requests\Company\ChangeEnvironmentRequest;
+use App\Http\Requests\Company\CreateApiKeyRequest;
+use App\Http\Requests\Company\InviteCompanyMemberRequest;
+use App\Http\Requests\Company\StoreCompanyRequest;
+use App\Http\Requests\Company\UpdateCompanyMemberRequest;
+use App\Http\Requests\Company\UpdateCompanyRequest;
+use App\Http\Requests\Company\UpdateIssuerConfigRequest;
+use App\Http\Requests\Company\UploadCertificateRequest;
+use App\Http\Requests\Company\UploadLogoRequest;
+use App\Models\Company;
+use App\Models\CompanyInvitation;
+use App\Models\User;
 use App\Notifications\CompanyInvitationNotification;
 use App\Services\Audit\AuditLogger;
+use App\Services\Billing\PlanLimitService;
 use App\Services\Certificates\CompanyCertificateService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,14 +36,13 @@ class CompanyController extends Controller
     public function __construct(
         private readonly AuditLogger $auditLogger,
         private readonly CompanyCertificateService $certificateService,
-    ) {
-    }
+    ) {}
 
     public function index(): JsonResponse
     {
         $this->authorize('viewAny', Company::class);
 
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = request()->user();
 
         return response()->json(
@@ -251,10 +264,14 @@ class CompanyController extends Controller
         return response()->json(status: 204);
     }
 
-    public function addMember(AddCompanyMemberRequest $request, Company $company): JsonResponse
+    public function addMember(AddCompanyMemberRequest $request, Company $company, PlanLimitService $planLimits): JsonResponse
     {
         $data = $request->validated();
         $member = User::query()->findOrFail($data['user_id']);
+
+        if (! $company->users()->whereKey($member->id)->exists()) {
+            $planLimits->assertCanInviteMember($company);
+        }
 
         $company->users()->syncWithoutDetaching([
             $member->id => [
@@ -333,9 +350,11 @@ class CompanyController extends Controller
         ]);
     }
 
-    public function inviteMember(InviteCompanyMemberRequest $request, Company $company): JsonResponse
+    public function inviteMember(InviteCompanyMemberRequest $request, Company $company, PlanLimitService $planLimits): JsonResponse
     {
         $data = $request->validated();
+
+        $planLimits->assertCanInviteMember($company);
 
         $alreadyMember = $company->users()
             ->where('email', $data['email'])

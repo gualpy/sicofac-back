@@ -17,6 +17,7 @@ use App\Services\Billing\InvoiceDraftService;
 use App\Services\Billing\InvoiceEmissionService;
 use App\Services\Billing\InvoiceIssueService;
 use App\Services\Billing\InvoiceTotalsCalculator;
+use App\Services\Billing\PlanLimitService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use RuntimeException;
@@ -268,11 +269,8 @@ class InvoiceIssueIdempotencyTest extends TestCase
 
     public function test_retry_resumes_a_draft_left_behind_by_a_crash_between_create_and_emit(): void
     {
-        $crashing = new class(
-            app(InvoiceTotalsCalculator::class),
-            app(AuditLogger::class),
-            app(DocumentSequenceService::class),
-        ) extends InvoiceEmissionService {
+        $crashing = new class(app(InvoiceTotalsCalculator::class), app(AuditLogger::class), app(DocumentSequenceService::class)) extends InvoiceEmissionService
+        {
             public function dispatch(Invoice $invoice): InvoicePipelineData
             {
                 throw new RuntimeException('worker died');
@@ -281,7 +279,7 @@ class InvoiceIssueIdempotencyTest extends TestCase
 
         $payload = $this->payload();
         $this->company->refresh(); // load DB defaults (establishment_code, emission_point), as route binding does
-        $service = new InvoiceIssueService(app(InvoiceDraftService::class), $crashing);
+        $service = new InvoiceIssueService(app(InvoiceDraftService::class), $crashing, app(PlanLimitService::class));
 
         try {
             $service->issue($this->company, $payload, 'key-0000-0001');

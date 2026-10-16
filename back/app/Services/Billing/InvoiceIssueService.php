@@ -26,8 +26,8 @@ class InvoiceIssueService
     public function __construct(
         private readonly InvoiceDraftService $drafts,
         private readonly InvoiceEmissionService $emission,
-    ) {
-    }
+        private readonly PlanLimitService $planLimits,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $payload  validated request body
@@ -48,6 +48,8 @@ class InvoiceIssueService
                 ['external_reference' => $payload['external_reference']],
             );
         }
+
+        $this->planLimits->assertCanCreateDocument($company);
 
         try {
             $invoice = $this->createDraft($company, $payload, $idempotencyKey, $hash);
