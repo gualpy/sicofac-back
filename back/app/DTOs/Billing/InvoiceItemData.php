@@ -20,6 +20,30 @@ final readonly class InvoiceItemData
     ) {
     }
 
+    /**
+     * @param  array<string, mixed>  $item  validated invoice item payload
+     */
+    public static function fromArray(array $item): self
+    {
+        $taxRate = (float) ($item['tax_rate'] ?? 0);
+        $taxCode = isset($item['tax_code'])
+            ? TaxCode::from((string) $item['tax_code'])
+            : TaxCode::fromRate($taxRate);
+
+        return new self(
+            code: (string) $item['code'],
+            name: (string) $item['name'],
+            quantity: (float) $item['quantity'],
+            unitPrice: (float) $item['unit_price'],
+            productId: isset($item['product_id']) ? (int) $item['product_id'] : null,
+            discount: (float) ($item['discount'] ?? 0),
+            taxRate: $taxRate,
+            taxCode: $taxCode,
+            iceRate: (float) ($item['ice_rate'] ?? 0),
+            iceCode: $item['ice_code'] ?? null,
+        );
+    }
+
     public function subtotal(): float
     {
         return max(0, $this->quantity * $this->unitPrice - $this->discount);

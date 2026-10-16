@@ -52,7 +52,7 @@ Artisan::command('billing:demo-draft', function (InvoiceDraftService $draftServi
         ],
     );
 
-    $this->info("Draft creado: #{$invoice->id} secuencial {$invoice->sequential} total {$invoice->total}");
+    $this->info("Draft creado: #{$invoice->id} total {$invoice->total}");
 })->purpose('Crea una factura draft de ejemplo multiempresa');
 
 Artisan::command('billing:emit {invoiceId}', function (int $invoiceId, InvoiceEmissionService $emissionService) {

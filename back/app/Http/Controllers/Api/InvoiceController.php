@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\Billing\InvoiceItemData;
-use App\Enums\TaxCode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Invoice\StoreInvoiceRequest;
 use App\Http\Requests\Invoice\UpdateInvoiceRequest;
@@ -263,27 +262,6 @@ class InvoiceController extends Controller
      */
     private function toItemDtoArray(array $items): array
     {
-        return array_map(
-            function (array $item) {
-                $taxRate = (float) ($item['tax_rate'] ?? 0);
-                $taxCode = isset($item['tax_code'])
-                    ? TaxCode::from((string) $item['tax_code'])
-                    : TaxCode::fromRate($taxRate);
-
-                return new InvoiceItemData(
-                    code: (string) $item['code'],
-                    name: (string) $item['name'],
-                    quantity: (float) $item['quantity'],
-                    unitPrice: (float) $item['unit_price'],
-                    productId: isset($item['product_id']) ? (int) $item['product_id'] : null,
-                    discount: (float) ($item['discount'] ?? 0),
-                    taxRate: $taxRate,
-                    taxCode: $taxCode,
-                    iceRate: (float) ($item['ice_rate'] ?? 0),
-                    iceCode: $item['ice_code'] ?? null,
-                );
-            },
-            $items
-        );
+        return array_map(InvoiceItemData::fromArray(...), $items);
     }
 }

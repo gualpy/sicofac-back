@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\DB;
 class InvoiceDraftService
 {
     public function __construct(
-        private readonly DocumentSequenceService $sequenceService,
         private readonly InvoiceTotalsCalculator $totalsCalculator,
     ) {
     }
@@ -35,10 +34,14 @@ class InvoiceDraftService
         bool $hasTip = false,
         array $paymentMethods = [],
         array $additionalFields = [],
+        ?string $externalReference = null,
+        ?string $idempotencyKey = null,
+        ?string $requestHash = null,
     ): Invoice {
         return DB::transaction(function () use (
             $companyId, $customerId, $items, $documentCode, $establishmentCode, $emissionPoint,
             $guideNumber, $isNegotiable, $hasTip, $paymentMethods, $additionalFields,
+            $externalReference, $idempotencyKey, $requestHash,
         ) {
             $invoice = Invoice::query()->create([
                 'company_id' => $companyId,
@@ -49,7 +52,12 @@ class InvoiceDraftService
                 'guide_number' => $guideNumber,
                 'is_negotiable' => $isNegotiable,
                 'has_tip' => $hasTip,
-                'sequential' => $this->sequenceService->next($companyId, $documentCode, $establishmentCode, $emissionPoint),
+                // The fiscal number is NOT taken here: a draft that is never issued
+                // must not burn a sequential. It is assigned in InvoiceEmissionService.
+                'sequential' => null,
+                'external_reference' => $externalReference,
+                'idempotency_key' => $idempotencyKey,
+                'request_hash' => $requestHash,
                 'issue_date' => now()->toDateString(),
                 'status' => InvoiceStatus::Draft,
                 'currency' => 'USD',

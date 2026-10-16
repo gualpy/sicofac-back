@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Api\{AuthController, CompanyController, CompanyEmissionPointController, CompanyEstablishmentController, CustomerController, InvoiceController, PosCategoryController, ProductController};
+use App\Http\Controllers\Api\{AuthController, CompanyController, CompanyEmissionPointController, CompanyEstablishmentController, CustomerController, InvoiceController, InvoiceIssueController, PosCategoryController, ProductController};
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:login')->name('auth.register');
@@ -96,6 +96,14 @@ Route::middleware('auth:sanctum')->scopeBindings()->group(function () {
     Route::post('companies/{company}/invoices/{invoice}/emit', [InvoiceController::class, 'emit'])
         ->middleware('throttle:critical')
         ->name('companies.invoices.emit');
+    // API v1 for service-to-service clients (FitOS): idempotent create + emit.
+    Route::prefix('v1')->group(function () {
+        Route::post('companies/{company}/invoices/issue', [InvoiceIssueController::class, 'issue'])
+            ->middleware('throttle:critical')
+            ->name('v1.companies.invoices.issue');
+        Route::get('companies/{company}/invoices/by-reference/{externalReference}', [InvoiceIssueController::class, 'showByReference'])
+            ->name('v1.companies.invoices.by-reference');
+    });
     Route::get('companies/{company}/invoices/{invoice}/ride', [InvoiceController::class, 'ride'])
         ->name('companies.invoices.ride');
 });

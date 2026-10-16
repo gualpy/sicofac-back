@@ -15,6 +15,7 @@ class InvoiceEmissionService
     public function __construct(
         private readonly InvoiceTotalsCalculator $totalsCalculator,
         private readonly AuditLogger $auditLogger,
+        private readonly DocumentSequenceService $sequenceService,
     ) {
     }
 
@@ -32,8 +33,18 @@ class InvoiceEmissionService
 
             $before = $locked->toArray();
 
+            // Same transaction as the status flip: if anything below fails the
+            // sequence increment rolls back too, so no number is lost.
+            $sequential = $locked->sequential ?? $this->sequenceService->next(
+                $locked->company_id,
+                $locked->document_code,
+                $locked->establishment_code,
+                $locked->emission_point,
+            );
+
             $totals = $this->totalsCalculator->calculate($locked);
             $locked->update([
+                'sequential' => $sequential,
                 'subtotal' => $totals->subtotal,
                 'discount' => $totals->discount,
                 'subtotal_15' => $totals->subtotal15,
