@@ -62,6 +62,7 @@ class AuthController extends Controller
                 'name' => $data['company_name'],
                 'ruc' => $data['company_ruc'],
                 'environment' => $data['company_environment'],
+                'plan_id' => $data['plan_id'],
             ]);
 
             $user->companies()->attach($company->id, [

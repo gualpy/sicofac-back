@@ -1,8 +1,9 @@
 <?php
 
-use App\Http\Controllers\Api\{AuthController, CompanyController, CompanyEmissionPointController, CompanyEstablishmentController, CustomerController, InvoiceController, InvoiceIssueController, PosCategoryController, ProductController};
+use App\Http\Controllers\Api\{AuthController, CompanyController, CompanyEmissionPointController, CompanyEstablishmentController, CustomerController, InvoiceController, InvoiceIssueController, PlanController, PosCategoryController, ProductController};
 use Illuminate\Support\Facades\Route;
 
+Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
 Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:login')->name('auth.register');
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('auth.login');
 Route::get('auth/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,6 +13,11 @@ use Tests\TestCase;
 class AuthApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function starterPlanId(): int
+    {
+        return Plan::query()->where('slug', 'starter')->value('id');
+    }
 
     public function test_user_can_register_confirm_email_login_and_logout(): void
     {
@@ -25,6 +31,7 @@ class AuthApiTest extends TestCase
             'company_name' => 'Auth User Company',
             'company_ruc' => '0999999999001',
             'company_environment' => 'test',
+            'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
 
         // No token yet -- the account exists but is pending confirmation.
@@ -77,6 +84,7 @@ class AuthApiTest extends TestCase
             'company_name' => 'Pending Co',
             'company_ruc' => '0999999999002',
             'company_environment' => 'test',
+            'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
 
         $this->postJson('/api/auth/login', [
@@ -98,6 +106,7 @@ class AuthApiTest extends TestCase
             'company_name' => 'Tampered Co',
             'company_ruc' => '0999999999003',
             'company_environment' => 'test',
+            'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
 
         $user = User::query()->where('email', 'tampered@example.com')->firstOrFail();
@@ -123,6 +132,7 @@ class AuthApiTest extends TestCase
             'company_name' => 'Resend Co',
             'company_ruc' => '0999999999004',
             'company_environment' => 'test',
+            'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
 
         $existing = $this->postJson('/api/auth/email/resend', ['email' => 'resend@example.com'])

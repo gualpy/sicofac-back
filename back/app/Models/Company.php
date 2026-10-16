@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\{BelongsToMany, HasMany };
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, BelongsToMany, HasMany };
 use Laravel\Sanctum\HasApiTokens;
 
 class Company extends Model
@@ -31,6 +31,7 @@ class Company extends Model
         'environment',
         'sri_signing_enabled',
         'sri_submission_enabled',
+        'plan_id',
     ];
 
     protected function casts(): array
@@ -91,5 +92,10 @@ class Company extends Model
     public function invitations(): HasMany
     {
         return $this->hasMany(CompanyInvitation::class);
+    }
+
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
     }
 }
