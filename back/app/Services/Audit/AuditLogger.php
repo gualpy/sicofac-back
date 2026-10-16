@@ -3,6 +3,7 @@
 namespace App\Services\Audit;
 
 use App\Models\AuditLog;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 
@@ -22,7 +23,7 @@ class AuditLogger
         ?int $companyId = null,
     ): void {
         $request = request();
-        $user = auth()->user();
+        $actor = auth()->user();
 
         $resolvedCompanyId = $companyId
             ?? ($model?->getAttribute('company_id'))
@@ -30,7 +31,9 @@ class AuditLogger
 
         AuditLog::query()->create([
             'company_id' => $resolvedCompanyId,
-            'user_id' => $user?->id,
+            // Only a human user maps to a users.id row -- an API key's
+            // actor is the Company itself, nothing to attribute here.
+            'user_id' => $actor instanceof User ? $actor->id : null,
             'action' => $action,
             'model_type' => $model ? $model::class : null,
             'model_id' => $model?->getKey(),
