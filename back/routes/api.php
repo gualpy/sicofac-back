@@ -62,6 +62,14 @@ Route::middleware('auth:sanctum')->scopeBindings()->group(function () {
     Route::delete('companies/{company}/invitations/{invitation}', [CompanyController::class, 'revokeInvitation'])
         ->middleware('throttle:critical')
         ->name('companies.invitations.destroy');
+    Route::get('companies/{company}/api-keys', [CompanyController::class, 'listApiKeys'])
+        ->name('companies.api-keys.index');
+    Route::post('companies/{company}/api-keys', [CompanyController::class, 'createApiKey'])
+        ->middleware('throttle:critical')
+        ->name('companies.api-keys.store');
+    Route::delete('companies/{company}/api-keys/{tokenId}', [CompanyController::class, 'revokeApiKey'])
+        ->middleware('throttle:critical')
+        ->name('companies.api-keys.destroy');
     Route::get('companies/{company}/establishments', [CompanyEstablishmentController::class, 'index'])
         ->name('companies.establishments.index');
     Route::post('companies/{company}/establishments/{establishment}/emission-points', [CompanyEmissionPointController::class, 'store'])

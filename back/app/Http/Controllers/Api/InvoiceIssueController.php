@@ -34,7 +34,9 @@ class InvoiceIssueController extends Controller
 
     public function showByReference(Request $request, Company $company, string $externalReference, InvoiceIssueService $service): JsonResponse
     {
-        abort_unless($request->user()->belongsToCompany($company->id), 403);
+        $actor = $request->user();
+        $authorized = $actor instanceof Company ? $actor->is($company) : $actor->belongsToCompany($company->id);
+        abort_unless($authorized, 403);
 
         $invoice = $service->findByReference($company, $externalReference);
 

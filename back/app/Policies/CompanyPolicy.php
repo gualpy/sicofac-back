@@ -39,6 +39,11 @@ class CompanyPolicy
         return $this->hasCompanyRole($user, $company->id, [CompanyMembershipRole::Owner->value]);
     }
 
+    public function manageApiKeys(?User $user, Company $company): bool
+    {
+        return $this->hasCompanyRole($user, $company->id, [CompanyMembershipRole::Owner->value]);
+    }
+
     public function manageIssuerConfig(?User $user, Company $company): bool
     {
         return $this->hasCompanyRole($user, $company->id, [CompanyMembershipRole::Owner->value]);

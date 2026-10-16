@@ -17,13 +17,23 @@ class IssueInvoiceRequest extends StoreInvoiceRequest
     {
         /** @var Company|null $company */
         $company = $this->route('company');
+        $actor = $this->user();
 
-        // Creates AND issues in one call, so it needs the issue permission (owner/admin).
-        return $company && $this->user()
-            && $this->user()->hasCompanyRole($company->id, [
-                CompanyMembershipRole::Owner->value,
-                CompanyMembershipRole::Admin->value,
-            ]);
+        if (! $company || ! $actor) {
+            return false;
+        }
+
+        // Service-to-service client authenticated with the company's own API
+        // key: the key is already scoped 1-to-1 to its company, no role to check.
+        if ($actor instanceof Company) {
+            return $actor->is($company);
+        }
+
+        // Human user: creates AND issues in one call, so needs owner/admin.
+        return $actor->hasCompanyRole($company->id, [
+            CompanyMembershipRole::Owner->value,
+            CompanyMembershipRole::Admin->value,
+        ]);
     }
 
     /**

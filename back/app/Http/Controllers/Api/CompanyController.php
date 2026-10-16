@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\{CompanyMembershipRole, CompanyMembershipStatus};
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Company\{ActivateCertificateRequest, AddCompanyMemberRequest, ChangeEnvironmentRequest, InviteCompanyMemberRequest, StoreCompanyRequest,UpdateCompanyRequest,UpdateCompanyMemberRequest,UpdateIssuerConfigRequest, UploadCertificateRequest, UploadLogoRequest };
+use App\Http\Requests\Company\{ActivateCertificateRequest, AddCompanyMemberRequest, ChangeEnvironmentRequest, CreateApiKeyRequest, InviteCompanyMemberRequest, StoreCompanyRequest,UpdateCompanyRequest,UpdateCompanyMemberRequest,UpdateIssuerConfigRequest, UploadCertificateRequest, UploadLogoRequest };
 use App\Models\{Company,CompanyInvitation,User};
+use Illuminate\Http\Request;
 use App\Notifications\CompanyInvitationNotification;
 use App\Services\Audit\AuditLogger;
 use App\Services\Certificates\CompanyCertificateService;
@@ -389,5 +390,60 @@ class CompanyController extends Controller
         );
 
         return response()->json(status: 204);
+    }
+
+    public function listApiKeys(Request $request, Company $company): JsonResponse
+    {
+        $this->authorizeHumanOwner($request, $company);
+
+        $tokens = $company->tokens()
+            ->orderByDesc('created_at')
+            ->get(['id', 'name', 'last_used_at', 'created_at']);
+
+        return response()->json(['api_keys' => $tokens]);
+    }
+
+    public function createApiKey(CreateApiKeyRequest $request, Company $company): JsonResponse
+    {
+        $data = $request->validated();
+
+        $token = $company->createToken($data['name']);
+
+        $this->auditLogger->log(
+            'company.api_key.created',
+            $company,
+            null,
+            ['name' => $data['name'], 'token_id' => $token->accessToken->id],
+        );
+
+        return response()->json([
+            'id' => $token->accessToken->id,
+            'name' => $token->accessToken->name,
+            // Shown once -- only the hash is stored, this is the only chance to see it.
+            'token' => $token->plainTextToken,
+        ], 201);
+    }
+
+    public function revokeApiKey(Request $request, Company $company, int $tokenId): JsonResponse
+    {
+        $this->authorizeHumanOwner($request, $company);
+
+        $deleted = $company->tokens()->whereKey($tokenId)->delete();
+        abort_if($deleted === 0, 404);
+
+        $this->auditLogger->log('company.api_key.revoked', $company, null, ['token_id' => $tokenId]);
+
+        return response()->json(status: 204);
+    }
+
+    /**
+     * API keys are managed by a logged-in human owner only -- a key can
+     * never be used to manage keys (including itself).
+     */
+    private function authorizeHumanOwner(Request $request, Company $company): void
+    {
+        $actor = $request->user();
+        abort_unless($actor instanceof User, 403);
+        abort_unless($actor->can('manageApiKeys', $company), 403);
     }
 }
