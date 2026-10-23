@@ -12,6 +12,7 @@ use App\Http\Requests\Auth\ResendVerificationRequest;
 use App\Models\Company;
 use App\Models\CompanyInvitation;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,7 +48,7 @@ class AuthController extends Controller
             new OA\Response(response: 422, description: 'Validation error'),
         ]
     )]
-    public function register(RegisterRequest $request): JsonResponse
+    public function register(RegisterRequest $request, AuditLogger $auditLogger): JsonResponse
     {
         $data = $request->validated();
 
@@ -57,6 +58,11 @@ class AuthController extends Controller
                 'email' => $data['email'],
                 'password' => $data['password'],
             ]);
+
+            $user->forceFill([
+                'terms_accepted_at' => now(),
+                'terms_version' => config('legal.terms_version'),
+            ])->save();
 
             $company = Company::query()->create([
                 'name' => $data['company_name'],
@@ -72,6 +78,14 @@ class AuthController extends Controller
 
             return [$user, $company->fresh()];
         });
+
+        $auditLogger->log(
+            'user.terms_accepted',
+            $user,
+            null,
+            ['terms_version' => $user->terms_version, 'accepted_at' => $user->terms_accepted_at->toIso8601String()],
+            companyId: $company->id,
+        );
 
         // Account exists but stays unusable (see login()) until the user
         // clicks the emailed confirmation link -- no token issued here.

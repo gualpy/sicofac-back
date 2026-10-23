@@ -30,6 +30,7 @@ class PlansApiTest extends TestCase
             'company_name' => 'No Plan Co',
             'company_ruc' => '0999999999900',
             'company_environment' => 'test',
+            'terms_accepted' => true,
         ])
             ->assertStatus(422)
             ->assertJsonValidationErrors('plan_id');
@@ -46,6 +47,7 @@ class PlansApiTest extends TestCase
             'company_name' => 'Sneaky Co',
             'company_ruc' => '0999999999901',
             'company_environment' => 'test',
+            'terms_accepted' => true,
             'plan_id' => $empresaId,
         ])
             ->assertStatus(422)

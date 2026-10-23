@@ -27,6 +27,7 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', Password::defaults()],
             'device_name' => ['nullable', 'string', 'max:100'],
+            'terms_accepted' => ['required', 'accepted'],
 
             'company_name' => ['required', 'string', 'max:255'],
             'company_ruc' => ['required', 'string', 'size:13', 'unique:companies,ruc'],

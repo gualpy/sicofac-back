@@ -31,6 +31,7 @@ class AuthApiTest extends TestCase
             'company_name' => 'Auth User Company',
             'company_ruc' => '0999999999001',
             'company_environment' => 'test',
+            'terms_accepted' => true,
             'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
 
@@ -40,6 +41,13 @@ class AuthApiTest extends TestCase
 
         $user = User::query()->where('email', 'auth@example.com')->firstOrFail();
         $this->assertNull($user->email_verified_at);
+        $this->assertNotNull($user->terms_accepted_at);
+        $this->assertSame(config('legal.terms_version'), $user->terms_version);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'user.terms_accepted',
+            'model_type' => User::class,
+            'model_id' => $user->id,
+        ]);
 
         Notification::assertSentTo($user, VerifyEmail::class);
 
@@ -84,6 +92,7 @@ class AuthApiTest extends TestCase
             'company_name' => 'Pending Co',
             'company_ruc' => '0999999999002',
             'company_environment' => 'test',
+            'terms_accepted' => true,
             'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
 
@@ -106,6 +115,7 @@ class AuthApiTest extends TestCase
             'company_name' => 'Tampered Co',
             'company_ruc' => '0999999999003',
             'company_environment' => 'test',
+            'terms_accepted' => true,
             'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
 
@@ -132,6 +142,7 @@ class AuthApiTest extends TestCase
             'company_name' => 'Resend Co',
             'company_ruc' => '0999999999004',
             'company_environment' => 'test',
+            'terms_accepted' => true,
             'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
 
@@ -142,5 +153,22 @@ class AuthApiTest extends TestCase
             ->assertOk();
 
         $this->assertSame($existing->json('message'), $unknown->json('message'));
+    }
+
+    public function test_registering_without_accepting_terms_is_rejected(): void
+    {
+        $this->postJson('/api/auth/register', [
+            'name' => 'No Terms',
+            'email' => 'noterms@example.com',
+            'password' => 'Password123!',
+            'company_name' => 'No Terms Co',
+            'company_ruc' => '0999999999005',
+            'company_environment' => 'test',
+            'plan_id' => $this->starterPlanId(),
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('terms_accepted');
+
+        $this->assertDatabaseMissing('users', ['email' => 'noterms@example.com']);
     }
 }
