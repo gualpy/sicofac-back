@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Api\Admin\CompanyController as AdminCompanyController;
+use App\Http\Controllers\Api\Admin\MetricsController as AdminMetricsController;
+use App\Http\Controllers\Api\Admin\PlanController as AdminPlanController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\CompanyEmissionPointController;
@@ -33,6 +37,13 @@ Route::get('auth/invitations/{token}', [AuthController::class, 'showInvitation']
 Route::post('auth/invitations/{token}/accept', [AuthController::class, 'acceptInvitation'])
     ->middleware('throttle:login')
     ->name('invitations.accept');
+
+Route::post('auth/admin/magic-link', [AdminAuthController::class, 'requestMagicLink'])
+    ->middleware('throttle:login')
+    ->name('admin.magic-link.request');
+Route::get('auth/admin/magic-login/{id}/{hash}', [AdminAuthController::class, 'magicLogin'])
+    ->middleware(['signed', 'throttle:login'])
+    ->name('admin.magic-login');
 
 Route::middleware('auth:sanctum')->scopeBindings()->group(function () {
     Route::get('auth/me', [AuthController::class, 'me'])->name('auth.me');
@@ -130,4 +141,17 @@ Route::middleware('auth:sanctum')->scopeBindings()->group(function () {
     });
     Route::get('companies/{company}/invoices/{invoice}/ride', [InvoiceController::class, 'ride'])
         ->name('companies.invoices.ride');
+
+    Route::prefix('admin')->middleware('super_admin')->group(function () {
+        Route::get('companies', [AdminCompanyController::class, 'index'])->name('admin.companies.index');
+        Route::post('companies/{company}/activate', [AdminCompanyController::class, 'activate'])->name('admin.companies.activate');
+        Route::post('companies/{company}/deactivate', [AdminCompanyController::class, 'deactivate'])->name('admin.companies.deactivate');
+
+        Route::get('metrics', [AdminMetricsController::class, 'index'])->name('admin.metrics');
+
+        Route::get('plans', [AdminPlanController::class, 'index'])->name('admin.plans.index');
+        Route::post('plans', [AdminPlanController::class, 'store'])->name('admin.plans.store');
+        Route::put('plans/{plan}', [AdminPlanController::class, 'update'])->name('admin.plans.update');
+        Route::delete('plans/{plan}', [AdminPlanController::class, 'destroy'])->name('admin.plans.destroy');
+    });
 });

@@ -17,6 +17,14 @@ class PlanLimitService
 {
     public function assertCanCreateDocument(Company $company): void
     {
+        if (! $company->is_active) {
+            throw new PlanLimitExceededException(
+                'company_inactive',
+                'Esta empresa esta desactivada. Contacta a soporte.',
+                [],
+            );
+        }
+
         $limit = $company->plan?->monthly_document_limit;
 
         if ($limit === null) {

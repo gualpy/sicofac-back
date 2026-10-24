@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\{BelongsTo, BelongsToMany, HasMany };
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 
 class Company extends Model
@@ -32,6 +34,7 @@ class Company extends Model
         'sri_signing_enabled',
         'sri_submission_enabled',
         'plan_id',
+        'is_active',
     ];
 
     protected function casts(): array
@@ -44,6 +47,7 @@ class Company extends Model
             'is_special_taxpayer' => 'bool',
             'is_popular_business' => 'bool',
             'requires_accounting' => 'bool',
+            'is_active' => 'bool',
         ];
     }
 
