@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Plan;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
@@ -170,5 +173,51 @@ class AuthApiTest extends TestCase
             ->assertJsonValidationErrors('terms_accepted');
 
         $this->assertDatabaseMissing('users', ['email' => 'noterms@example.com']);
+    }
+
+    public function test_forgot_password_sends_a_reset_link_and_never_leaks_whether_the_email_exists(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['email' => 'reset@example.com']);
+
+        $known = $this->postJson('/api/auth/forgot-password', ['email' => 'reset@example.com'])->assertOk();
+        $unknown = $this->postJson('/api/auth/forgot-password', ['email' => 'nobody@example.com'])->assertOk();
+
+        $this->assertSame($known->json('message'), $unknown->json('message'));
+        Notification::assertSentTo($user, ResetPassword::class);
+    }
+
+    public function test_reset_password_with_a_valid_token_updates_the_password_and_revokes_existing_tokens(): void
+    {
+        $user = User::factory()->create(['email' => 'reset2@example.com', 'password' => 'OldPassword123!']);
+        $user->createToken('old-session');
+        $this->assertSame(1, $user->tokens()->count());
+
+        $token = Password::createToken($user);
+
+        $this->postJson('/api/auth/reset-password', [
+            'email' => 'reset2@example.com',
+            'token' => $token,
+            'password' => 'NewPassword123!',
+            'password_confirmation' => 'NewPassword123!',
+        ])->assertOk();
+
+        $this->assertSame(0, $user->fresh()->tokens()->count());
+        $this->assertTrue(Hash::check('NewPassword123!', $user->fresh()->password));
+    }
+
+    public function test_reset_password_with_an_invalid_token_is_rejected(): void
+    {
+        $user = User::factory()->create(['email' => 'reset3@example.com']);
+
+        $this->postJson('/api/auth/reset-password', [
+            'email' => 'reset3@example.com',
+            'token' => 'not-a-real-token',
+            'password' => 'NewPassword123!',
+            'password_confirmation' => 'NewPassword123!',
+        ])->assertStatus(422);
+
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
     }
 }

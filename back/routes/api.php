@@ -1,6 +1,15 @@
 <?php
 
-use App\Http\Controllers\Api\{AuthController, CompanyController, CompanyEmissionPointController, CompanyEstablishmentController, CustomerController, InvoiceController, InvoiceIssueController, PlanController, PosCategoryController, ProductController};
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CompanyController;
+use App\Http\Controllers\Api\CompanyEmissionPointController;
+use App\Http\Controllers\Api\CompanyEstablishmentController;
+use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\InvoiceIssueController;
+use App\Http\Controllers\Api\PlanController;
+use App\Http\Controllers\Api\PosCategoryController;
+use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
@@ -12,6 +21,12 @@ Route::get('auth/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail
 Route::post('auth/email/resend', [AuthController::class, 'resendVerification'])
     ->middleware('throttle:login')
     ->name('verification.resend');
+Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword'])
+    ->middleware('throttle:login')
+    ->name('password.email');
+Route::post('auth/reset-password', [AuthController::class, 'resetPassword'])
+    ->middleware('throttle:login')
+    ->name('password.update');
 Route::get('auth/invitations/{token}', [AuthController::class, 'showInvitation'])
     ->middleware('throttle:login')
     ->name('invitations.show');

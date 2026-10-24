@@ -6,9 +6,11 @@ use App\Enums\CompanyMembershipRole;
 use App\Enums\CompanyMembershipStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\AcceptInvitationRequest;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResendVerificationRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Models\Company;
 use App\Models\CompanyInvitation;
 use App\Models\User;
@@ -18,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 
@@ -217,6 +220,69 @@ class AuthController extends Controller
         ]);
     }
 
+    #[OA\Post(
+        path: '/auth/forgot-password',
+        tags: ['Auth'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(required: ['email'], properties: [
+                new OA\Property(property: 'email', type: 'string', format: 'email'),
+            ])
+        ),
+        responses: [new OA\Response(response: 200, description: 'Generic success -- never reveals whether the email exists')]
+    )]
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        Password::sendResetLink($request->only('email'));
+
+        // Same response regardless of whether the account exists -- public
+        // unauthenticated endpoint, must not leak which emails are registered.
+        return response()->json([
+            'message' => 'Si el correo esta registrado, te enviamos un enlace para restablecer tu contrasena.',
+        ]);
+    }
+
+    #[OA\Post(
+        path: '/auth/reset-password',
+        tags: ['Auth'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['email', 'token', 'password', 'password_confirmation'],
+                properties: [
+                    new OA\Property(property: 'email', type: 'string', format: 'email'),
+                    new OA\Property(property: 'token', type: 'string'),
+                    new OA\Property(property: 'password', type: 'string', format: 'password'),
+                    new OA\Property(property: 'password_confirmation', type: 'string', format: 'password'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Password updated'),
+            new OA\Response(response: 422, description: 'Invalid or expired token'),
+        ]
+    )]
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                // 'password' has a 'hashed' cast on the model (see register()) --
+                // assigning the plain value here hashes it, Hash::make() would double-hash.
+                $user->forceFill(['password' => $password])->save();
+                $user->tokens()->delete(); // force re-login everywhere after a reset
+            },
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            throw ValidationException::withMessages([
+                'email' => [__($status)],
+            ]);
+        }
+
+        return response()->json(['message' => 'Contrasena actualizada.']);
+    }
+
     #[OA\Get(
         path: '/auth/invitations/{token}',
         tags: ['Auth'],
@@ -292,4 +358,3 @@ class AuthController extends Controller
         return response()->json(['message' => 'Invitacion aceptada. Ya podes iniciar sesion.']);
     }
 }
-

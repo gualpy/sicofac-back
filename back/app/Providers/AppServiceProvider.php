@@ -21,6 +21,7 @@ use App\Policies\CustomerPolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\PosCategoryPolicy;
 use App\Policies\ProductPolicy;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -68,6 +69,22 @@ class AppServiceProvider extends ServiceProvider
                 ->action('Confirmar mi cuenta', $url)
                 ->line('Este enlace vence en 24 horas.')
                 ->line('Si no creaste esta cuenta, puedes ignorar este correo.');
+        });
+
+        ResetPassword::createUrlUsing(function ($notifiable, string $token) {
+            $email = urlencode($notifiable->getEmailForPasswordReset());
+
+            return config('app.frontend_url')."/reset-password?token={$token}&email={$email}";
+        });
+
+        ResetPassword::toMailUsing(function ($notifiable, string $url) {
+            return (new MailMessage)
+                ->subject('Recupera tu contrasena - SICOFAC')
+                ->greeting('Hola '.$notifiable->name.',')
+                ->line('Recibimos un pedido para restablecer tu contrasena.')
+                ->action('Elegir nueva contrasena', $url)
+                ->line('Este enlace vence en 60 minutos.')
+                ->line('Si no pediste esto, puedes ignorar este correo -- tu contrasena actual sigue siendo valida.');
         });
 
         Gate::policy(Company::class, CompanyPolicy::class);
