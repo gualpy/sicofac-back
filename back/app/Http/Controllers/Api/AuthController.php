@@ -34,7 +34,7 @@ class AuthController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['name', 'email', 'password', 'company_name', 'company_ruc', 'company_environment'],
+                required: ['name', 'email', 'password', 'company_name', 'company_ruc'],
                 properties: [
                     new OA\Property(property: 'name', type: 'string'),
                     new OA\Property(property: 'email', type: 'string', format: 'email'),
@@ -42,7 +42,6 @@ class AuthController extends Controller
                     new OA\Property(property: 'device_name', type: 'string', nullable: true),
                     new OA\Property(property: 'company_name', type: 'string'),
                     new OA\Property(property: 'company_ruc', type: 'string', description: '13 digits'),
-                    new OA\Property(property: 'company_environment', type: 'string', enum: ['test', 'production']),
                 ]
             )
         ),
@@ -70,7 +69,7 @@ class AuthController extends Controller
             $company = Company::query()->create([
                 'name' => $data['company_name'],
                 'ruc' => $data['company_ruc'],
-                'environment' => $data['company_environment'],
+                'environment' => 'production',
                 'plan_id' => $data['plan_id'],
             ]);
 

@@ -33,7 +33,6 @@ class AuthApiTest extends TestCase
             'device_name' => 'phpunit',
             'company_name' => 'Auth User Company',
             'company_ruc' => '0999999999001',
-            'company_environment' => 'test',
             'terms_accepted' => true,
             'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
@@ -94,7 +93,6 @@ class AuthApiTest extends TestCase
             'password' => 'Password123!',
             'company_name' => 'Pending Co',
             'company_ruc' => '0999999999002',
-            'company_environment' => 'test',
             'terms_accepted' => true,
             'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
@@ -117,7 +115,6 @@ class AuthApiTest extends TestCase
             'password' => 'Password123!',
             'company_name' => 'Tampered Co',
             'company_ruc' => '0999999999003',
-            'company_environment' => 'test',
             'terms_accepted' => true,
             'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
@@ -144,7 +141,6 @@ class AuthApiTest extends TestCase
             'password' => 'Password123!',
             'company_name' => 'Resend Co',
             'company_ruc' => '0999999999004',
-            'company_environment' => 'test',
             'terms_accepted' => true,
             'plan_id' => $this->starterPlanId(),
         ])->assertCreated();
@@ -166,7 +162,6 @@ class AuthApiTest extends TestCase
             'password' => 'Password123!',
             'company_name' => 'No Terms Co',
             'company_ruc' => '0999999999005',
-            'company_environment' => 'test',
             'plan_id' => $this->starterPlanId(),
         ])
             ->assertStatus(422)

@@ -31,7 +31,6 @@ class RegisterRequest extends FormRequest
 
             'company_name' => ['required', 'string', 'max:255'],
             'company_ruc' => ['required', 'string', 'size:13', 'unique:companies,ruc'],
-            'company_environment' => ['required', Rule::in(['test', 'production'])],
 
             // Only self-serve (is_public) plans can be picked at signup; the
             // Empresa tier is sales-assisted and assigned manually later.

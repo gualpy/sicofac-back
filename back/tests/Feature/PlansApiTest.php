@@ -29,7 +29,6 @@ class PlansApiTest extends TestCase
             'password' => 'Password123!',
             'company_name' => 'No Plan Co',
             'company_ruc' => '0999999999900',
-            'company_environment' => 'test',
             'terms_accepted' => true,
         ])
             ->assertStatus(422)
@@ -46,7 +45,6 @@ class PlansApiTest extends TestCase
             'password' => 'Password123!',
             'company_name' => 'Sneaky Co',
             'company_ruc' => '0999999999901',
-            'company_environment' => 'test',
             'terms_accepted' => true,
             'plan_id' => $empresaId,
         ])
