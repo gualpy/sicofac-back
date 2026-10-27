@@ -180,7 +180,11 @@ class AuthApiTest extends TestCase
         $unknown = $this->postJson('/api/auth/forgot-password', ['email' => 'nobody@example.com'])->assertOk();
 
         $this->assertSame($known->json('message'), $unknown->json('message'));
-        Notification::assertSentTo($user, ResetPassword::class);
+        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification, array $channels, User $notifiable) {
+            $url = $notification->toMail($notifiable)->actionUrl;
+
+            return str_contains($url, '/reset-password?token=') && str_contains($url, 'email=reset%40example.com');
+        });
     }
 
     public function test_reset_password_with_a_valid_token_updates_the_password_and_revokes_existing_tokens(): void

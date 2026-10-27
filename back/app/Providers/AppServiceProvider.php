@@ -71,13 +71,15 @@ class AppServiceProvider extends ServiceProvider
                 ->line('Si no creaste esta cuenta, puedes ignorar este correo.');
         });
 
-        ResetPassword::createUrlUsing(function ($notifiable, string $token) {
+        ResetPassword::toMailUsing(function ($notifiable, string $token) {
+            // Laravel calls this with the raw token, NOT the URL built by
+            // createUrlUsing() -- toMail() only runs createUrlUsing() through
+            // its own default buildMailMessage() path, which is skipped
+            // entirely once a toMailUsing callback is registered. The URL
+            // has to be built here instead.
             $email = urlencode($notifiable->getEmailForPasswordReset());
+            $url = config('app.frontend_url')."/reset-password?token={$token}&email={$email}";
 
-            return config('app.frontend_url')."/reset-password?token={$token}&email={$email}";
-        });
-
-        ResetPassword::toMailUsing(function ($notifiable, string $url) {
             return (new MailMessage)
                 ->subject('Recupera tu contrasena - SICOFAC')
                 ->greeting('Hola '.$notifiable->name.',')
